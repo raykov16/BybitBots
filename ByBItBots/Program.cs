@@ -129,6 +129,8 @@ static async Task FarmVolumeAsync(CoinShortInfo coin, decimal capital, decimal r
     bool shouldBuy = true;
     decimal quantity;
     decimal maxPriceDiff = 0.01m;
+    var timesWithouthTrade = 300 / requestInterval; // Minute in seconds / interval = interval * timesWithoutTrade = minutes AKA how many minutes without a trade
+    var actualTimesWithoutTrade = 0;
     requestInterval *= 1000; // transforming seconds to MS
 
     var timeStarted = DateTime.UtcNow;
@@ -184,11 +186,17 @@ static async Task FarmVolumeAsync(CoinShortInfo coin, decimal capital, decimal r
 
             var priceDiff = CalculatePercentageDifference(previousPrice, currentPrice);
 
-            if (previousSide == Side.BUY && priceDiff > maxPriceDiff && currentPrice < previousPrice)
+            if (previousSide == Side.BUY && priceDiff > maxPriceDiff && currentPrice <= previousPrice && actualTimesWithoutTrade < timesWithouthTrade)
             {
                 Console.WriteLine($"Price diff: {priceDiff}, sell order will not be placed!");
+                Console.WriteLine($"Times without trade: {++actualTimesWithoutTrade}");
                 Thread.Sleep(requestInterval);
                 continue;
+            }
+            else
+            {
+                actualTimesWithoutTrade = 0;
+                Console.WriteLine($"Reseting times without trade to: {actualTimesWithoutTrade}");
             }
 
             if (previousSide == Side.BUY)
@@ -225,11 +233,17 @@ static async Task FarmVolumeAsync(CoinShortInfo coin, decimal capital, decimal r
 
             var priceDiff = CalculatePercentageDifference(previousPrice, currentPrice);
 
-            if (previousSide == Side.BUY && priceDiff > maxPriceDiff && currentPrice < previousPrice)
+            if (previousSide == Side.BUY && priceDiff > maxPriceDiff && currentPrice < previousPrice && actualTimesWithoutTrade <= timesWithouthTrade)
             {
                 Console.WriteLine($"Price diff: {priceDiff}, existing order price will not be changed!");
+                Console.WriteLine($"Times without trade: {++actualTimesWithoutTrade}");
                 Thread.Sleep(requestInterval);
                 continue;
+            }
+            else
+            {
+                actualTimesWithoutTrade = 0;
+                Console.WriteLine($"Reseting times without trade to: {actualTimesWithoutTrade}");
             }
 
             // updeitvame ordera sus segashnata cena i podhodqshtoto quantity
