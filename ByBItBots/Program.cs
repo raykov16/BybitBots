@@ -20,21 +20,26 @@ string recvWindow = "500000000";
 
 ////////////////////////////////////////////////////////////////
 
-string usedUrl = mainnetUrl;
-string usedApiKey = mainNetApiKey;
-string usedApiSecret = mainNetApiSecret;
+string usedUrl = testnetUrl;
+string usedApiKey = testNetApiKey;
+string usedApiSecret = testNetApiSecret;
 
 BybitMarketDataService market = new(url: usedUrl, recvWindow: recvWindow);
 
 BybitTradeService trade = new(usedApiKey, usedApiSecret, recvWindow: recvWindow, url: usedUrl);
 BybitPositionService position = new(usedApiKey, usedApiSecret, recvWindow: recvWindow, url: usedUrl);
 
-List<CoinShortInfo> fittingCoins = await GetSpotCoinsAsync(market, "CBKUSDT");
+await BuyCloseOrder(market, position, trade);
+
+
+return;
+List<CoinShortInfo> fittingCoins = await GetCoinsForFundingTradingAsync(market);
 
 // print the information
 PrintCoinShortInfo(fittingCoins);
 
-await FarmVolumeAsync(fittingCoins[0], 100, 2300, 5, market, trade);
+
+//await FarmVolumeAsync(fittingCoins[0], 100, 49200 , 5, market, trade);
 //await BuySpotCoinFirstAsync(fittingCoins[0].Symbol, 100, Side.SELL, market, trade);
 
 //// make order for every coin
@@ -266,13 +271,10 @@ static async Task FarmVolumeAsync(CoinShortInfo coin, decimal capital, decimal r
 
 static async Task<List<CoinShortInfo>> GetCoinsForFundingTradingAsync(BybitMarketDataService market)
 {
-    var marketTickersDerivatives = await market.GetMarketTickers(Category.LINEAR);
-    ApiResponseResult<ResultCoinInfo> info = JsonConvert.DeserializeObject<ApiResponseResult<ResultCoinInfo>>(marketTickersDerivatives);
-
     List<CoinShortInfo> fittingCoins = await GetProfitableFundingsAsync(market);
 
     // calculate bybit funding rate and leverage + set how much profits the coin will make
-    await CalculateLeverageAndProfitsDerivativesAsync(market, fittingCoins);
+    await SetLeverageAndFundingRate(market, fittingCoins);
 
     return fittingCoins.OrderByDescending(c => c.Profits).ToList();
 }
@@ -356,9 +358,6 @@ static async Task<List<OrderRequest>> CreateOrdersAsync(BybitPositionService pos
 
 static async Task<List<CoinShortInfo>> GetProfitableFundingsAsync(BybitMarketDataService market)
 {
-    var marketTickers = await market.GetMarketTickers(Category.LINEAR);
-    ApiResponseResult<ResultCoinInfo> info = JsonConvert.DeserializeObject<ApiResponseResult<ResultCoinInfo>>(marketTickers);
-
     var derivativeCoins = await GetDerivativesCoinsAsync(market);
 
     return derivativeCoins.Where(c => c.FundingRate > 0.0012m || c.FundingRate < -0.0012m).ToList();
@@ -397,15 +396,13 @@ static async Task<List<CoinShortInfo>> GetDerivativesCoinsAsync(BybitMarketDataS
        .ToList();
 }
 
-static async Task CalculateLeverageAndProfitsDerivativesAsync(BybitMarketDataService market, List<CoinShortInfo> coins)
+static async Task SetLeverageAndFundingRate(BybitMarketDataService market, List<CoinShortInfo> coins)
 {
     foreach (var c in coins)
     {
-        c.Leverage = await CalculateLeverageAsync(market, c.Symbol);
+        c.Leverage = await GetLeverageAsync(market, c.Symbol);
 
         c.FundingRate *= 100;
-
-        c.SetProfits();
     }
 }
 
@@ -464,7 +461,7 @@ static async Task<ApiResponseResult<EmptyResult>> PlaceOrderAsync(BybitTradeServ
     return JsonConvert.DeserializeObject<ApiResponseResult<EmptyResult>>(placeOrder);
 }
 
-static async Task<decimal> CalculateLeverageAsync(BybitMarketDataService market, string symbol)
+static async Task<decimal> GetLeverageAsync(BybitMarketDataService market, string symbol)
 {
     var instrumentInfo = await market.GetInstrumentInfo(Category.LINEAR, symbol);
 
@@ -480,7 +477,7 @@ static async Task BuyCloseOrder(BybitMarketDataService market, BybitPositionServ
     var coin = (await GetDerivativesCoinsAsync(market, "BTCUSDT"))[0];
     var capital = 100m;
 
-    coin.Leverage = await CalculateLeverageAsync(market, coin.Symbol);
+    coin.Leverage = await GetLeverageAsync(market, coin.Symbol);
     var leverageResponse = await position.SetPositionLeverage(Category.LINEAR, coin.Symbol, $"{coin.Leverage}", $"{coin.Leverage}");
 
     var currentPrice = await GetCurrentPriceAsync(coin.Symbol, market, Category.LINEAR);
@@ -504,7 +501,14 @@ static async Task BuyCloseOrder(BybitMarketDataService market, BybitPositionServ
     Thread.Sleep(5000);
 
     var placeOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<PlacedOrderResult>>(orderInfo);
-    var cancleOrder = await trade.CancelOrder(Category.LINEAR, coin.Symbol, orderId: placeOrderResult.Result.OrderId);
+
+    var cancleOrder = await trade.PlaceOrder(category: Category.LINEAR
+        ,symbol: coin.Symbol
+        ,side: Side.SELL
+        ,orderType: OrderType.MARKET
+        , reduceOnly: true
+        , qty: quantity.ToString(),
+        price: "0");
 
     Console.WriteLine(cancleOrder);
 }
