@@ -7,37 +7,28 @@ using ByBItBots.Results;
 using Newtonsoft.Json;
 using static ByBItBots.Config;
 
-string mainnetUrl = "https://api.bybit.com";
-string testnetUrl = "https://api-testnet.bybit.com";
-
-string testNetApiKey = TestNetApiKey;
-string testNetApiSecret = TestNetApiSecret;
-
-string mainNetApiKey = MainNetApiKey;
-string mainNetApiSecret = MainNetApiSecret;
-
 string recvWindow = "500000000";
 
 ////////////////////////////////////////////////////////////////
 
-string usedUrl = testnetUrl;
-string usedApiKey = testNetApiKey;
-string usedApiSecret = testNetApiSecret;
+string usedUrl = MainnetUrl;
+string usedApiKey = MainNetApiKey;
+string usedApiSecret = MainNetApiSecret;
+
+UseTestnet(ref usedUrl, ref usedApiKey, ref usedApiSecret);
 
 BybitMarketDataService market = new(url: usedUrl, recvWindow: recvWindow);
-
 BybitTradeService trade = new(usedApiKey, usedApiSecret, recvWindow: recvWindow, url: usedUrl);
 BybitPositionService position = new(usedApiKey, usedApiSecret, recvWindow: recvWindow, url: usedUrl);
 
-await BuyCloseOrder(market, position, trade);
-
-
-return;
 List<CoinShortInfo> fittingCoins = await GetCoinsForFundingTradingAsync(market);
 
 // print the information
 PrintCoinShortInfo(fittingCoins);
 
+await OpenFundingCoinsTradesAsync(market, position, trade, 10);
+
+return;
 
 //await FarmVolumeAsync(fittingCoins[0], 100, 49200 , 5, market, trade);
 //await BuySpotCoinFirstAsync(fittingCoins[0].Symbol, 100, Side.SELL, market, trade);
@@ -327,33 +318,66 @@ static void PrintCoinShortInfo(List<CoinShortInfo> fittingCoin)
     }
 }
 
-static async Task<List<OrderRequest>> CreateOrdersAsync(BybitPositionService positionTest, List<CoinShortInfo> coins)
+static async Task<(List<OrderRequest> OpenRequests, List<OrderRequest> CloseRequests)> CreateOrdersAsync(BybitMarketDataService market,BybitPositionService positionTest, List<CoinShortInfo> coins, decimal capitalPerCoin)
 {
-    List<OrderRequest> request = new List<OrderRequest>();
+    List<OrderRequest> openRequests = new List<OrderRequest>();
+    List<OrderRequest> closeRequests = new List<OrderRequest>();
 
-    foreach (var c in coins.OrderByDescending(c => c.Profits))
+    foreach (var coin in coins.OrderByDescending(c => c.Profits))
     {
-        var coin = c;
+        var currentPrice = await GetCurrentPriceAsync(coin.Symbol, market, Category.SPOT);
+        var quantityRaw = capitalPerCoin / currentPrice;
+        var quantity = Math.Round(quantityRaw, 3);
 
-        if (request.Count < 10)
+        if (openRequests.Count < 10)
         {
             var leverageResponse = await positionTest.SetPositionLeverage(Category.LINEAR, coin.Symbol, $"{coin.Leverage}", $"{coin.Leverage}");
-            Console.WriteLine(leverageResponse);
 
-            var order = new OrderRequest
+            var tpPrice = CalculateTPSLPrice(2, coin.Leverage, currentPrice, true);
+            var slPrice = CalculateTPSLPrice(2, coin.Leverage, currentPrice, false);
+
+            var openOrder = new OrderRequest
             {
+                Category = Category.LINEAR,
                 Symbol = coin.Symbol,
-                OrderType = "Market",
-                Side = coin.FundingRate > 0 ? "Sell" : "Buy",
-                Qty = "1",
-                //StopLoss = "",
+                OrderType = OrderType.MARKET,
+                Side = coin.FundingRate > 0 ? Side.SELL : Side.BUY,
+                Qty = quantity.ToString(),
+                TakeProfit = tpPrice.ToString(),
+                StopLoss = slPrice.ToString()
             };
 
-            request.Add(order);
+            openRequests.Add(openOrder);
+        }
+
+        if (closeRequests.Count < 10)
+        {
+            var closeOrder = new OrderRequest
+            {
+                Category = Category.LINEAR
+                ,
+                Symbol = coin.Symbol
+                ,
+                OrderType = OrderType.MARKET
+                ,
+                Side = coin.FundingRate > 0 ? Side.BUY : Side.SELL
+                ,
+                Qty = quantity.ToString()
+                ,
+                Price = "0"
+                ,
+                ReduceOnly = true
+            };
+
+            closeRequests.Add(closeOrder);
+        }
+        else
+        {
+            break;
         }
     }
 
-    return request;
+    return (OpenRequests: openRequests, CloseRequests: closeRequests);
 }
 
 static async Task<List<CoinShortInfo>> GetProfitableFundingsAsync(BybitMarketDataService market)
@@ -511,4 +535,58 @@ static async Task BuyCloseOrder(BybitMarketDataService market, BybitPositionServ
         price: "0");
 
     Console.WriteLine(cancleOrder);
+}
+
+static async Task<DateTime> GetCurrentBybitTimeAsync(BybitMarketDataService market)
+{
+    var bybitTimeInfo = await market.CheckServerTime();
+    var bybitTimeObject = JsonConvert.DeserializeObject<ApiResponseResult<TimeResponse>>(bybitTimeInfo);
+
+    return ReadBybitTime(bybitTimeObject.Result.TimeSecond);
+}
+
+static DateTime ReadBybitTime(int bybitTime)
+{
+    return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(bybitTime);
+}
+
+static async Task OpenFundingCoinsTradesAsync(BybitMarketDataService market, BybitPositionService position, BybitTradeService trade, decimal capitalPerCoin)
+{
+    var fundingCoins = await GetCoinsForFundingTradingAsync(market);
+
+    fundingCoins = fundingCoins.Where(c => c.Profits > 4).ToList();
+
+    var bybitFundingTimes = new List<int>
+    {
+        4, 8, 12
+    };
+
+    while (true)
+    {
+        var bybitTime = await GetCurrentBybitTimeAsync(market);
+
+        Console.WriteLine($"Bybit time: {bybitTime}");
+
+        if (bybitFundingTimes.Contains(bybitTime.Hour) && bybitTime.Minute == 59 && bybitTime.Second >= 58)
+        {
+            var orders = await CreateOrdersAsync(market, position, fundingCoins, capitalPerCoin);
+
+            await trade.PlaceBatchOrder(Category.LINEAR, orders.OpenRequests);
+
+            Thread.Sleep(2000);
+
+            await trade.PlaceBatchOrder(Category.LINEAR, orders.CloseRequests);
+
+            break;
+        }
+
+        Console.WriteLine($"Time not valid");
+    }
+}
+
+static void UseTestnet(ref string urlUsed, ref string apiKeyUsed, ref string apiSecretUsed)
+{
+    urlUsed = TestnetUrl;
+    apiKeyUsed = TestNetApiKey;
+    apiSecretUsed = TestNetApiSecret;
 }

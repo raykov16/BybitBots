@@ -5,7 +5,7 @@ namespace ByBItBots.moi
     public class TimeResponse
     {
         [JsonProperty("timeSecond")]
-        public string TimeSecond { get; set; }
+        public int TimeSecond { get; set; }
 
         [JsonProperty("timeNano")]
         public string TimeNano { get; set; }
