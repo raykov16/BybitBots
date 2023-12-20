@@ -15,7 +15,7 @@ string usedUrl = MainnetUrl;
 string usedApiKey = MainNetApiKey;
 string usedApiSecret = MainNetApiSecret;
 
-UseTestnet(ref usedUrl, ref usedApiKey, ref usedApiSecret);
+//UseTestnet(ref usedUrl, ref usedApiKey, ref usedApiSecret);
 
 BybitMarketDataService market = new(url: usedUrl, recvWindow: recvWindow);
 BybitTradeService trade = new(usedApiKey, usedApiSecret, recvWindow: recvWindow, url: usedUrl);
@@ -24,11 +24,13 @@ BybitPositionService position = new(usedApiKey, usedApiSecret, recvWindow: recvW
 List<CoinShortInfo> fittingCoins = await GetCoinsForFundingTradingAsync(market);
 
 // print the information
+Console.WriteLine(await GetCurrentBybitTimeAsync(market));
+
+return;
 PrintCoinShortInfo(fittingCoins);
 
 await OpenFundingCoinsTradesAsync(market, position, trade, 10);
 
-return;
 
 //await FarmVolumeAsync(fittingCoins[0], 100, 49200 , 5, market, trade);
 //await BuySpotCoinFirstAsync(fittingCoins[0].Symbol, 100, Side.SELL, market, trade);
@@ -354,18 +356,12 @@ static async Task<(List<OrderRequest> OpenRequests, List<OrderRequest> CloseRequ
         {
             var closeOrder = new OrderRequest
             {
-                Category = Category.LINEAR
-                ,
-                Symbol = coin.Symbol
-                ,
-                OrderType = OrderType.MARKET
-                ,
-                Side = coin.FundingRate > 0 ? Side.BUY : Side.SELL
-                ,
-                Qty = quantity.ToString()
-                ,
-                Price = "0"
-                ,
+                Category = Category.LINEAR,
+                Symbol = coin.Symbol,
+                OrderType = OrderType.MARKET,
+                Side = coin.FundingRate > 0 ? Side.BUY : Side.SELL,
+                Qty = quantity.ToString(),
+                Price = "0",
                 ReduceOnly = true
             };
 
@@ -547,15 +543,11 @@ static async Task<DateTime> GetCurrentBybitTimeAsync(BybitMarketDataService mark
 
 static DateTime ReadBybitTime(int bybitTime)
 {
-    return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(bybitTime);
+    return new DateTime(1970, 1, 1, 0, 0, 0).AddSeconds(bybitTime);
 }
 
 static async Task OpenFundingCoinsTradesAsync(BybitMarketDataService market, BybitPositionService position, BybitTradeService trade, decimal capitalPerCoin)
 {
-    var fundingCoins = await GetCoinsForFundingTradingAsync(market);
-
-    fundingCoins = fundingCoins.Where(c => c.Profits > 4).ToList();
-
     var bybitFundingTimes = new List<int>
     {
         4, 8, 12
@@ -563,24 +555,43 @@ static async Task OpenFundingCoinsTradesAsync(BybitMarketDataService market, Byb
 
     while (true)
     {
-        var bybitTime = await GetCurrentBybitTimeAsync(market);
+        var fundingCoins = await GetCoinsForFundingTradingAsync(market);
 
+        fundingCoins = fundingCoins.Where(c => c.Profits > 4).ToList();
+
+        var mostProfitableCoin = fundingCoins[0];
+
+        var bybitTime = await GetCurrentBybitTimeAsync(market);
         Console.WriteLine($"Bybit time: {bybitTime}");
 
-        if (bybitFundingTimes.Contains(bybitTime.Hour) && bybitTime.Minute == 59 && bybitTime.Second >= 58)
+        if (fundingCoins.Count != 0)
         {
-            var orders = await CreateOrdersAsync(market, position, fundingCoins, capitalPerCoin);
+            if (bybitFundingTimes.Contains(bybitTime.Hour) && bybitTime.Minute == 59 && bybitTime.Second >= 58)
+            {
+                var orders = await CreateOrdersAsync(market, position, fundingCoins, capitalPerCoin);
 
-            await trade.PlaceBatchOrder(Category.LINEAR, orders.OpenRequests);
+                await trade.PlaceBatchOrder(Category.LINEAR, orders.OpenRequests);
 
-            Thread.Sleep(2000);
+                Thread.Sleep(2000);
 
-            await trade.PlaceBatchOrder(Category.LINEAR, orders.CloseRequests);
+                await trade.PlaceBatchOrder(Category.LINEAR, orders.CloseRequests);
 
-            break;
+                break;
+            }
         }
 
-        Console.WriteLine($"Time not valid");
+        var myTimeToBybitTime = DateTime.Now.AddHours(-2);
+
+        var timeUntilNextFunding = new TimeSpan();
+
+        if (mostProfitableCoin != null)
+        {
+            timeUntilNextFunding = mostProfitableCoin.NextFundingHour - bybitTime;
+        }
+        else
+        {
+            timeUntilNextFunding = myTimeToBybitTime - bybitTime;
+        }
     }
 }
 
