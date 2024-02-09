@@ -9,8 +9,7 @@
 *.user
 *.userosscache
 *.sln.docstates
-ByBItBots/MyBybitBots/ByBItBots/Config
-
+ByBItBots/MyBybitBots/ByBItBots/Configs/Config.cs
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
