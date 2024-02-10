@@ -399,3 +399,4 @@ FodyWeavers.xsd
 /ByBItBots/Config.cs
 /ByBItBots/Configs/MainnetConfig.cs
 /ByBItBots/Configs/TestnetConfig.cs
+/ByBItBots/Configs/ConfigConstants.cs
