@@ -1,4 +1,4 @@
-﻿namespace ByBItBots.moi
+﻿namespace ByBitBots.DTOs
 {
     public class PreviousOrderInfo
     {

@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace ByBitBots.Moi
+namespace ByBitBots.DTOs
 {
     public class CoinInfo
     {

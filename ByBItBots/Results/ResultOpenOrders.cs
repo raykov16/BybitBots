@@ -1,4 +1,4 @@
-﻿using ByBitBots.Moi;
+﻿using ByBitBots.DTOs;
 using Newtonsoft.Json;
 
 namespace ByBItBots.Results

@@ -1,603 +1,83 @@
 ﻿using bybit.net.api.ApiServiceImp;
-using bybit.net.api.Models;
-using bybit.net.api.Models.Trade;
-using ByBitBots.Moi;
-using ByBItBots.moi;
-using ByBItBots.Results;
-using Newtonsoft.Json;
-using static ByBItBots.Config;
-
-string recvWindow = "500000000";
-
-////////////////////////////////////////////////////////////////
-
-string usedUrl = MainnetUrl;
-string usedApiKey = MainNetApiKey;
-string usedApiSecret = MainNetApiSecret;
-
-//UseTestnet(ref usedUrl, ref usedApiKey, ref usedApiSecret);
-
-BybitMarketDataService market = new(url: usedUrl, recvWindow: recvWindow);
-BybitTradeService trade = new(usedApiKey, usedApiSecret, recvWindow: recvWindow, url: usedUrl);
-BybitPositionService position = new(usedApiKey, usedApiSecret, recvWindow: recvWindow, url: usedUrl);
-
-List<CoinShortInfo> fittingCoins = await GetCoinsForFundingTradingAsync(market);
-
-// print the information
-Console.WriteLine(await GetCurrentBybitTimeAsync(market));
-
-return;
-PrintCoinShortInfo(fittingCoins);
-
-await OpenFundingCoinsTradesAsync(market, position, trade, 10);
+using ByBitBots.DTOs;
+using ByBItBots.Configs;
+using ByBItBots.DTOs.Menus;
+using ByBItBots.Enums;
+using ByBItBots.Helpers.Implementations;
+using ByBItBots.Helpers.Interfaces;
+using ByBItBots.Services.Implementations;
+using ByBItBots.Services.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 
 
-//await FarmVolumeAsync(fittingCoins[0], 100, 49200 , 5, market, trade);
-//await BuySpotCoinFirstAsync(fittingCoins[0].Symbol, 100, Side.SELL, market, trade);
+var printer = new ConsolePrinterService();
 
-//// make order for every coin
-//List<OrderRequest> request = await CreateOrders(positionTest, fittingCoins);
+printer.PrintMenu(new BybitNetsMenu());
+var userChoice = ChooseNet();
+Console.Clear();
 
-////place positions
-//var openOrderInfoString = await tradeTest.PlaceBatchOrder(Category.LINEAR, request);
+IConfig config;
 
-//// wait 1 second then close all positions
-//Thread.Sleep(1000);
-
-//// close all positions
-//var closeOrderInfoString = await tradeTest.CancelAllOrder(Category.LINEAR, baseCoin: "USDT");
-
-//Console.WriteLine("OpenOrderInfoString : " + openOrderInfoString);
-//Console.WriteLine();
-//Console.WriteLine("CloseOrderInfoString : " + closeOrderInfoString);
-
-//var riskLimit = await market.GetMarketRiskLimit(Category.LINEAR, "BTCUSDT");
-//Console.WriteLine($"RiskLimit: {riskLimit}");
-
-//var leverageResponse = await positionTest.SetPositionLeverage(Category.LINEAR, "BTCUSDT", "100", "100");
-//var order = await tradeTest.PlaceOrder(Category.LINEAR, "BTCUSDT", Side.BUY, OrderType.MARKET, qty: "0.076", stopLoss: "36790", takeProfit: "37850"); // setva leverega takuv kakuvto e v saita
-
-static async Task BuySpotCoinFirstAsync(string symbol, decimal capital, Side side, BybitMarketDataService market, BybitTradeService trade)
+if (userChoice == BybitNets.TESTNET)
 {
-    List<CoinShortInfo> fittingCoins = await GetSpotCoinsAsync(market, symbol);
+    config = new TestnetConfig();
+    Console.WriteLine("[USING TESTNET]");
+}
+else
+{
+    config = new MainnetConfig();
+    Console.WriteLine("[USING MAINNET]");
+}
 
-    while (fittingCoins.Count == 0)
+
+var serviceProvider = new ServiceCollection()
+    .AddScoped<BybitMarketDataService>(provider =>
     {
-        Console.WriteLine("Coin not listed yet!");
-        fittingCoins = await GetSpotCoinsAsync(market, symbol);
+        return new(config.NetURL, config.RecvWindow);
+
+    })
+    .AddScoped<BybitTradeService>(provider =>
+    {
+        return new(config.ApiKey, config.ApiSecret, config.NetURL, config.RecvWindow);
+    })
+    .AddScoped<BybitPositionService>(provider =>
+    {
+        return new(config.ApiKey, config.ApiSecret, config.NetURL, config.RecvWindow);
+    })
+    .AddScoped<IBybitTimeService, BybitTimeService>()
+    .AddScoped<ICoinDataService, CoinDataService>()
+    .AddScoped<IPrinterService, ConsolePrinterService>()
+    .AddScoped<IFundingTradingService, FundingTradingService>()
+    .AddScoped<IOrderService, OrderService>()
+    .AddScoped<ISpotTradingService, SpotTradingService>()
+    .AddScoped<IBotInterfaceHost, BotConsoleInterfaceHost>()
+    .BuildServiceProvider();
+
+var bot = serviceProvider.GetRequiredService<IBotInterfaceHost>();
+await bot.StartBot(config);
+
+
+#region Private methods
+BybitNets ChooseNet()
+{
+    Console.CursorVisible = false;
+
+    var userChoice = Console.ReadKey(true);
+
+    if (userChoice.Key == ConsoleKey.D1)
+    {
+        Console.WriteLine("[USING TESTNET]");
+        return BybitNets.TESTNET;
     }
-
-    var coin = fittingCoins[0];
-
-    var currentPrice = await GetCurrentPriceAsync(symbol, market, Category.SPOT);
-
-    decimal quantity = 0;
-    var previousOrderInfo = await GetLastOrderInfoAsync(trade, coin.Symbol);
-
-    if (side == Side.SELL)
+    else if (userChoice.Key == ConsoleKey.D2)
     {
-        quantity = decimal.Parse(previousOrderInfo.Quantity);
+        Console.WriteLine("[USING MAINNET]");
+        return BybitNets.MAINNET;
     }
     else
     {
-        quantity = Math.Round(capital / currentPrice, 2);
-    }
-
-    var placeOrderResult = await PlaceOrderAsync(trade, Category.SPOT, coin.Symbol, side, OrderType.LIMIT, quantity.ToString(), currentPrice.ToString());
-    Console.WriteLine($"Placed order result: {placeOrderResult.RetMsg}");
-
-    while (placeOrderResult.RetMsg != "OK")
-    {
-        placeOrderResult = await PlaceOrderAsync(trade, Category.SPOT, coin.Symbol, side, OrderType.LIMIT, quantity.ToString(), currentPrice.ToString());
-        Console.WriteLine($"Placed order result: {placeOrderResult.RetMsg}");
-    }
-
-    var openOrdersResult = await GetOpenOrdersAsync(trade, coin.Symbol);
-
-    while (openOrdersResult.Result.List.Count > 0)
-    {
-        currentPrice = await GetCurrentPriceAsync(coin.Symbol, market, Category.SPOT);
-
-        if (side == Side.SELL)
-        {
-            quantity = decimal.Parse(previousOrderInfo.Quantity);
-        }
-        else
-        {
-            quantity = Math.Round(capital / currentPrice, 2);
-        }
-
-        var amendOrderResult = await trade.AmendOrder(Category.SPOT,
-                coin.Symbol,
-                orderId: openOrdersResult.Result.List[0].OrderId,
-            qty: $"{quantity}",
-                price: $"{currentPrice}");
-
-        Console.WriteLine("Ammended order result: " + amendOrderResult);
-
-        openOrdersResult = await GetOpenOrdersAsync(trade, coin.Symbol);
-    }
-
-    Console.WriteLine("GG bratan, glei parite v bybita luud");
-}
-
-static async Task FarmVolumeAsync(CoinShortInfo coin, decimal capital, decimal requiredVolume, int requestInterval, BybitMarketDataService market, BybitTradeService trade)
-{
-    decimal tradedVolume = 0m;
-    bool shouldBuy = true;
-    decimal quantity;
-    decimal maxPriceDiff = 0.01m;
-    var timesWithouthTrade = 300 / requestInterval; // Minute in seconds / interval = interval * timesWithoutTrade = minutes AKA how many minutes without a trade
-    var actualTimesWithoutTrade = 0;
-    requestInterval *= 1000; // transforming seconds to MS
-
-    var timeStarted = DateTime.UtcNow;
-
-    while (tradedVolume < requiredVolume)
-    {
-        // check for open orders
-        var openOrdersResult = await GetOpenOrdersAsync(trade, coin.Symbol);
-        Console.WriteLine("Got open orders");
-
-        if (openOrdersResult.RetMsg != "OK")
-        {
-            Console.WriteLine(openOrdersResult.RetMsg);
-            break;
-        }
-
-        if (openOrdersResult.Result.List.Count > 0)
-            Console.WriteLine("Order price " + openOrdersResult.Result.List[0].Price);
-
-        var currentPrice = await GetCurrentPriceAsync(coin.Symbol, market, Category.SPOT);
-        Console.WriteLine("Got price");
-        Console.WriteLine($"market price {currentPrice}");
-
-        //ako ima otvoren order i cenata na toq order se razminava ot segashnata cena - vlizame
-        if (openOrdersResult.Result.List.Count == 0)
-        {
-            Console.WriteLine("No orders found, opening an order!");
-
-            if (tradedVolume >= requiredVolume)
-                break;
-
-            var previousOrderInfo = await GetLastOrderInfoAsync(trade, coin.Symbol);
-
-            var previousSide = previousOrderInfo.Side;
-            var previousPrice = decimal.Parse(previousOrderInfo.Price);
-
-            if (previousSide == Side.BUY)
-            {
-                shouldBuy = false;
-            }
-            else
-            {
-                shouldBuy = true;
-            }
-
-            var side = shouldBuy ? Side.BUY : Side.SELL;
-
-            Console.WriteLine("Previous side: " + previousSide);
-            Console.WriteLine("Current side: " + side);
-
-            currentPrice = await GetCurrentPriceAsync(coin.Symbol, market, Category.SPOT);
-            Console.WriteLine("getting price");
-
-            var priceDiff = CalculatePercentageDifference(previousPrice, currentPrice);
-
-            if (previousSide == Side.BUY && priceDiff > maxPriceDiff && currentPrice <= previousPrice && actualTimesWithoutTrade < timesWithouthTrade)
-            {
-                Console.WriteLine($"Price diff: {priceDiff}, sell order will not be placed!");
-                Console.WriteLine($"Times without trade: {++actualTimesWithoutTrade}");
-                Thread.Sleep(requestInterval);
-                continue;
-            }
-            else
-            {
-                actualTimesWithoutTrade = 0;
-                Console.WriteLine($"Reseting times without trade to: {actualTimesWithoutTrade}");
-            }
-
-            if (previousSide == Side.BUY)
-            {
-                quantity = Math.Round(decimal.Parse(previousOrderInfo.Quantity), 2);
-            }
-            else
-            {
-                quantity = Math.Round(capital / currentPrice, 2);
-            }
-
-            var placeOrder = await trade.PlaceOrder(Category.SPOT, coin.Symbol, side, OrderType.LIMIT, $"{quantity}", $"{currentPrice}");
-            var placeOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<EmptyResult>>(placeOrder);
-
-            Console.WriteLine("Placed order result: " + placeOrderResult.RetMsg);
-
-            if (placeOrderResult.RetMsg == "OK")
-            {
-                tradedVolume += capital;
-            }
-        }
-        else if (decimal.Parse(openOrdersResult.Result.List[0].Price) != currentPrice)
-        {
-            Console.WriteLine("Open order price difference, changing price!");
-            // pak vzimame  segashnata cena i izchislqvame quantitito          
-
-            var previousOrderInfo = await GetLastOrderInfoAsync(trade, coin.Symbol);
-
-            var previousSide = previousOrderInfo.Side;
-            var previousPrice = decimal.Parse(previousOrderInfo.Price);
-
-            currentPrice = await GetCurrentPriceAsync(coin.Symbol, market, Category.SPOT);
-            Console.WriteLine("getting price");
-
-            var priceDiff = CalculatePercentageDifference(previousPrice, currentPrice);
-
-            if (previousSide == Side.BUY && priceDiff > maxPriceDiff && currentPrice < previousPrice && actualTimesWithoutTrade <= timesWithouthTrade)
-            {
-                Console.WriteLine($"Price diff: {priceDiff}, existing order price will not be changed!");
-                Console.WriteLine($"Times without trade: {++actualTimesWithoutTrade}");
-                Thread.Sleep(requestInterval);
-                continue;
-            }
-            else
-            {
-                actualTimesWithoutTrade = 0;
-                Console.WriteLine($"Reseting times without trade to: {actualTimesWithoutTrade}");
-            }
-
-            // updeitvame ordera sus segashnata cena i podhodqshtoto quantity
-            var amendOrderResult = await trade.AmendOrder(Category.SPOT,
-                coin.Symbol,
-                orderId: openOrdersResult.Result.List[0].OrderId,
-                price: $"{currentPrice}");
-
-            Console.WriteLine("Ammended order result: " + amendOrderResult);
-        }
-
-        Console.WriteLine($"waiting {requestInterval / 1000} sec");
-        Thread.Sleep(requestInterval);
-        Console.WriteLine($"waited {requestInterval / 1000} sec, starting again");
-        Console.WriteLine($"Accumulated volume : {tradedVolume} / {requiredVolume}");
-    }
-
-    Console.WriteLine($"Succesfuly acumulated {tradedVolume} volume for {DateTime.UtcNow.TimeOfDay - timeStarted.TimeOfDay}! PICHAGAAAAAA");
-}
-
-static async Task<List<CoinShortInfo>> GetCoinsForFundingTradingAsync(BybitMarketDataService market)
-{
-    List<CoinShortInfo> fittingCoins = await GetProfitableFundingsAsync(market);
-
-    // calculate bybit funding rate and leverage + set how much profits the coin will make
-    await SetLeverageAndFundingRate(market, fittingCoins);
-
-    return fittingCoins.OrderByDescending(c => c.Profits).ToList();
-}
-
-static async Task<decimal> GetCurrentPriceAsync(string symbol, BybitMarketDataService market, Category category)
-{
-    var marketTickers = await market.GetMarketTickers(category, symbol);
-    ApiResponseResult<ResultCoinInfo> info = JsonConvert.DeserializeObject<ApiResponseResult<ResultCoinInfo>>(marketTickers);
-
-    CoinShortInfo coin = null;
-
-    if (category == Category.SPOT)
-    {
-        coin = info.Result.List
-        .Where(c => c.Symbol.Contains("USDT"))
-        .Select(c => new CoinShortInfo
-        {
-            Symbol = c.Symbol,
-            Price = decimal.Parse(c.LastPrice)
-        })
-        .FirstOrDefault();
-    }
-    else
-    {
-        coin = info.Result.List
-      .Where(c => c.Symbol.Contains("USDT"))
-      .Select(c => new CoinShortInfo
-      {
-          FundingRate = decimal.Parse(c.FundingRate),
-          NextFunding = long.Parse(c.NextFundingTime),
-          Symbol = c.Symbol,
-          Price = decimal.Parse(c.LastPrice)
-      })
-      .FirstOrDefault();
-    }
-
-    return coin.Price;
-}
-
-static void PrintCoinShortInfo(List<CoinShortInfo> fittingCoin)
-{
-    foreach (var c in fittingCoin)
-    {
-        Console.WriteLine("-----------");
-        Console.WriteLine($"Coin: {c.Symbol}");
-        Console.WriteLine($"Funding rate: {c.FundingRate:f4}");
-        Console.WriteLine($"Leverage: {c.Leverage}");
-        Console.WriteLine($"Price: {c.Price}");
-        Console.WriteLine($"SetProfitsResult {c.Profits:f2}");
+        Console.WriteLine("Please press one of the specified buttons");
+        return ChooseNet();
     }
 }
-
-static async Task<(List<OrderRequest> OpenRequests, List<OrderRequest> CloseRequests)> CreateOrdersAsync(BybitMarketDataService market,BybitPositionService positionTest, List<CoinShortInfo> coins, decimal capitalPerCoin)
-{
-    List<OrderRequest> openRequests = new List<OrderRequest>();
-    List<OrderRequest> closeRequests = new List<OrderRequest>();
-
-    foreach (var coin in coins.OrderByDescending(c => c.Profits))
-    {
-        var currentPrice = await GetCurrentPriceAsync(coin.Symbol, market, Category.SPOT);
-        var quantityRaw = capitalPerCoin / currentPrice;
-        var quantity = Math.Round(quantityRaw, 3);
-
-        if (openRequests.Count < 10)
-        {
-            var leverageResponse = await positionTest.SetPositionLeverage(Category.LINEAR, coin.Symbol, $"{coin.Leverage}", $"{coin.Leverage}");
-
-            var tpPrice = CalculateTPSLPrice(2, coin.Leverage, currentPrice, true);
-            var slPrice = CalculateTPSLPrice(2, coin.Leverage, currentPrice, false);
-
-            var openOrder = new OrderRequest
-            {
-                Category = Category.LINEAR,
-                Symbol = coin.Symbol,
-                OrderType = OrderType.MARKET,
-                Side = coin.FundingRate > 0 ? Side.SELL : Side.BUY,
-                Qty = quantity.ToString(),
-                TakeProfit = tpPrice.ToString(),
-                StopLoss = slPrice.ToString()
-            };
-
-            openRequests.Add(openOrder);
-        }
-
-        if (closeRequests.Count < 10)
-        {
-            var closeOrder = new OrderRequest
-            {
-                Category = Category.LINEAR,
-                Symbol = coin.Symbol,
-                OrderType = OrderType.MARKET,
-                Side = coin.FundingRate > 0 ? Side.BUY : Side.SELL,
-                Qty = quantity.ToString(),
-                Price = "0",
-                ReduceOnly = true
-            };
-
-            closeRequests.Add(closeOrder);
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    return (OpenRequests: openRequests, CloseRequests: closeRequests);
-}
-
-static async Task<List<CoinShortInfo>> GetProfitableFundingsAsync(BybitMarketDataService market)
-{
-    var derivativeCoins = await GetDerivativesCoinsAsync(market);
-
-    return derivativeCoins.Where(c => c.FundingRate > 0.0012m || c.FundingRate < -0.0012m).ToList();
-}
-
-static async Task<List<CoinShortInfo>> GetSpotCoinsAsync(BybitMarketDataService market, string symbol = null)
-{
-    var marketTickers = await market.GetMarketTickers(Category.SPOT, symbol);
-    ApiResponseResult<ResultCoinInfo> info = JsonConvert.DeserializeObject<ApiResponseResult<ResultCoinInfo>>(marketTickers);
-
-    return info.Result.List
-        .Where(c => c.Symbol.Contains("USDT"))
-        .Select(c => new CoinShortInfo
-        {
-            Symbol = c.Symbol,
-            Price = decimal.Parse(c.LastPrice)
-        })
-        .OrderBy(c => c.Symbol)
-        .ToList();
-}
-
-static async Task<List<CoinShortInfo>> GetDerivativesCoinsAsync(BybitMarketDataService market, string symbol = null)
-{
-    var marketTickers = await market.GetMarketTickers(Category.LINEAR, symbol);
-    ApiResponseResult<ResultCoinInfo> info = JsonConvert.DeserializeObject<ApiResponseResult<ResultCoinInfo>>(marketTickers);
-
-    return info.Result.List
-       .Where(c => c.Symbol.Contains("USDT"))
-       .Select(c => new CoinShortInfo
-       {
-           FundingRate = decimal.Parse(c.FundingRate),
-           NextFunding = long.Parse(c.NextFundingTime),
-           Symbol = c.Symbol,
-           Price = decimal.Parse(c.LastPrice)
-       })
-       .ToList();
-}
-
-static async Task SetLeverageAndFundingRate(BybitMarketDataService market, List<CoinShortInfo> coins)
-{
-    foreach (var c in coins)
-    {
-        c.Leverage = await GetLeverageAsync(market, c.Symbol);
-
-        c.FundingRate *= 100;
-    }
-}
-
-static async Task<ApiResponseResult<ResultOpenOrders>> GetOpenOrdersAsync(BybitTradeService tradeTest, string symbol)
-{
-    var openOrders = await tradeTest.GetOpenOrders(Category.SPOT, symbol: symbol);
-    var openOrdersResult = JsonConvert.DeserializeObject<ApiResponseResult<ResultOpenOrders>>(openOrders);
-    return openOrdersResult;
-}
-
-static async Task<PreviousOrderInfo> GetLastOrderInfoAsync(BybitTradeService trade, string symbol)
-{
-    var orderHistory = await trade.GetOrdersHistory(Category.SPOT, symbol, limit: 1);
-    var orderHistoryResult = JsonConvert.DeserializeObject<ApiResponseResult<ResultOpenOrders>>(orderHistory);
-
-    var previousOrderInfo = new PreviousOrderInfo
-    {
-        Side = orderHistoryResult.Result.List[0].Side,
-        Price = orderHistoryResult.Result.List[0].AvgPrice,
-        Quantity = orderHistoryResult.Result.List[0].Qty
-    };
-
-    return previousOrderInfo;
-}
-static decimal CalculatePercentageDifference(decimal num1, decimal num2)
-{
-    decimal absoluteDifference = Math.Abs(num1 - num2);
-    decimal average = (num1 + num2) / 2;
-
-    decimal percentageDifference = (absoluteDifference / average) * 100;
-
-    return Math.Round(percentageDifference, 2);
-}
-
-static decimal CalculateTPSLPrice(decimal percentageLose, decimal leverage, decimal coinPrice, bool isTakeProfit)
-{
-    decimal coinPercentPriceDrop = percentageLose / leverage / 100;
-
-    decimal coinCashPriceDrop = coinPrice * coinPercentPriceDrop;
-
-    if (isTakeProfit)
-    {
-        decimal takeProfit = coinPrice + coinCashPriceDrop;
-
-        return takeProfit;
-    }
-
-    decimal stopLoss = coinPrice - coinCashPriceDrop;
-
-    return stopLoss;
-}
-
-static async Task<ApiResponseResult<EmptyResult>> PlaceOrderAsync(BybitTradeService trade, Category category, string coinSymbol, Side side, OrderType orderType, string quantity, string currentPrice)
-{
-    var placeOrder = await trade.PlaceOrder(category, coinSymbol, side, orderType, quantity, currentPrice);
-    return JsonConvert.DeserializeObject<ApiResponseResult<EmptyResult>>(placeOrder);
-}
-
-static async Task<decimal> GetLeverageAsync(BybitMarketDataService market, string symbol)
-{
-    var instrumentInfo = await market.GetInstrumentInfo(Category.LINEAR, symbol);
-
-    var arr = new string[100];
-
-    arr = instrumentInfo.Split(":").ToArray();
-
-    return decimal.Parse(arr[17].Split("\",")[0].Replace("\"", ""));
-}
-
-static async Task BuyCloseOrder(BybitMarketDataService market, BybitPositionService position, BybitTradeService trade)
-{
-    var coin = (await GetDerivativesCoinsAsync(market, "BTCUSDT"))[0];
-    var capital = 100m;
-
-    coin.Leverage = await GetLeverageAsync(market, coin.Symbol);
-    var leverageResponse = await position.SetPositionLeverage(Category.LINEAR, coin.Symbol, $"{coin.Leverage}", $"{coin.Leverage}");
-
-    var currentPrice = await GetCurrentPriceAsync(coin.Symbol, market, Category.LINEAR);
-
-    var quantityRaw = capital / currentPrice;
-    var quantity = Math.Round(quantityRaw, 3);
-
-    var tpPrice = CalculateTPSLPrice(50, coin.Leverage, currentPrice, true);
-    var slPrice = CalculateTPSLPrice(50, coin.Leverage, currentPrice, false);
-
-    var orderInfo = await trade.PlaceOrder(Category.LINEAR,
-        coin.Symbol,
-        Side.BUY
-        , OrderType.MARKET
-        , qty: quantity.ToString()
-        , takeProfit: tpPrice.ToString()
-        , stopLoss: slPrice.ToString());
-
-    Console.WriteLine(orderInfo);
-
-    Thread.Sleep(5000);
-
-    var placeOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<PlacedOrderResult>>(orderInfo);
-
-    var cancleOrder = await trade.PlaceOrder(category: Category.LINEAR
-        ,symbol: coin.Symbol
-        ,side: Side.SELL
-        ,orderType: OrderType.MARKET
-        , reduceOnly: true
-        , qty: quantity.ToString(),
-        price: "0");
-
-    Console.WriteLine(cancleOrder);
-}
-
-static async Task<DateTime> GetCurrentBybitTimeAsync(BybitMarketDataService market)
-{
-    var bybitTimeInfo = await market.CheckServerTime();
-    var bybitTimeObject = JsonConvert.DeserializeObject<ApiResponseResult<TimeResponse>>(bybitTimeInfo);
-
-    return ReadBybitTime(bybitTimeObject.Result.TimeSecond);
-}
-
-static DateTime ReadBybitTime(int bybitTime)
-{
-    return new DateTime(1970, 1, 1, 0, 0, 0).AddSeconds(bybitTime);
-}
-
-static async Task OpenFundingCoinsTradesAsync(BybitMarketDataService market, BybitPositionService position, BybitTradeService trade, decimal capitalPerCoin)
-{
-    var bybitFundingTimes = new List<int>
-    {
-        4, 8, 12
-    };
-
-    while (true)
-    {
-        var fundingCoins = await GetCoinsForFundingTradingAsync(market);
-
-        fundingCoins = fundingCoins.Where(c => c.Profits > 4).ToList();
-
-        var mostProfitableCoin = fundingCoins[0];
-
-        var bybitTime = await GetCurrentBybitTimeAsync(market);
-        Console.WriteLine($"Bybit time: {bybitTime}");
-
-        if (fundingCoins.Count != 0)
-        {
-            if (bybitFundingTimes.Contains(bybitTime.Hour) && bybitTime.Minute == 59 && bybitTime.Second >= 58)
-            {
-                var orders = await CreateOrdersAsync(market, position, fundingCoins, capitalPerCoin);
-
-                await trade.PlaceBatchOrder(Category.LINEAR, orders.OpenRequests);
-
-                Thread.Sleep(2000);
-
-                await trade.PlaceBatchOrder(Category.LINEAR, orders.CloseRequests);
-
-                break;
-            }
-        }
-
-        var myTimeToBybitTime = DateTime.Now.AddHours(-2);
-
-        var timeUntilNextFunding = new TimeSpan();
-
-        if (mostProfitableCoin != null)
-        {
-            timeUntilNextFunding = mostProfitableCoin.NextFundingHour - bybitTime;
-        }
-        else
-        {
-            timeUntilNextFunding = myTimeToBybitTime - bybitTime;
-        }
-    }
-}
-
-static void UseTestnet(ref string urlUsed, ref string apiKeyUsed, ref string apiSecretUsed)
-{
-    urlUsed = TestnetUrl;
-    apiKeyUsed = TestNetApiKey;
-    apiSecretUsed = TestNetApiSecret;
-}
+#endregion  Private methods

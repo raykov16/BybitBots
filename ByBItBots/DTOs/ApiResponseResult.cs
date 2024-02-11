@@ -1,7 +1,6 @@
-﻿using ByBitBots.Moi;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
-namespace ByBitBots.Moi
+namespace ByBitBots.DTOs
 {
     public class ApiResponseResult<T>
     {

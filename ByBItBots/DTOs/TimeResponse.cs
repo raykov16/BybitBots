@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace ByBItBots.moi
+namespace ByBitBots.DTOs
 {
     public class TimeResponse
     {
