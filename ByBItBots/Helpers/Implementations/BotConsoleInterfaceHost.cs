@@ -32,6 +32,9 @@ namespace ByBItBots.Helpers.Implementations
 
         public async Task StartBot(IConfig config)
         {
+            // TO DO : At some point try to implement template pattern for bot methods.
+            // Call the printer methods no matter what, and inbetween them add different logic for different BotInterfaceHost implementations.
+
             await ChoseAnOption(config);
         }
 
@@ -70,16 +73,24 @@ namespace ByBItBots.Helpers.Implementations
                 switch (menuOption)
                 {
                     case MainMenuOptions.FARM_SPOT_VOLUME:
-                        await ExecuteFunction(menuOption, () => ExecuteFarmSpotVolume());
+                        Console.Clear();
+                        _printerService.PrintMessage($"[{menuOption.ToString().Replace("_", " ")} SELECTED]");
+                        await ExecuteFarmSpotVolume();
                         break;
                     case MainMenuOptions.BUY_SPOT_COIN_FIRST:
-                        await ExecuteFunction(menuOption, () => ExecuteBuySpotCoinFirst());
+                        Console.Clear();
+                        _printerService.PrintMessage($"[{menuOption.ToString().Replace("_", " ")} SELECTED]");
+                        await ExecuteBuySpotCoinFirst();
                         break;
                     case MainMenuOptions.GET_SPOT_COINS_INFO:
-                        await ExecuteFunction(menuOption, () => ExecuteGetSpotCoinsAsync());
+                        Console.Clear();
+                        _printerService.PrintMessage($"[{menuOption.ToString().Replace("_", " ")} SELECTED]");
+                        await ExecuteGetSpotCoinsAsync();
                         break;
                     case MainMenuOptions.GET_DERIVATIVES_COINS_INFO:
-                        await ExecuteFunction(menuOption, () => ExecuteGetDerivativesCoinsAsync());
+                        Console.Clear();
+                        _printerService.PrintMessage($"[{menuOption.ToString().Replace("_", " ")} SELECTED]");
+                        await ExecuteGetDerivativesCoinsAsync();
                         break;
                     case MainMenuOptions.GET_COINS_FOR_FUNDING_TRADING:
 
@@ -89,13 +100,19 @@ namespace ByBItBots.Helpers.Implementations
                             break;
                         }
 
-                        await ExecuteFunction(menuOption, () => ExecuteGetCoinsForFundingTradingAsync());
+                        Console.Clear();
+                        _printerService.PrintMessage($"[{menuOption.ToString().Replace("_", " ")} SELECTED]");
+                        await ExecuteGetCoinsForFundingTradingAsync();
                         break;
                     case MainMenuOptions.GET_OPEN_ORDERS:
-                        await ExecuteFunction(menuOption, () => ExecuteGetOpenOrdersAsync());
+                        Console.Clear();
+                        _printerService.PrintMessage($"[{menuOption.ToString().Replace("_", " ")} SELECTED]");
+                        await ExecuteGetOpenOrdersAsync();
                         break;
                     case MainMenuOptions.GET_BYBIT_SERVER_TIME:
-                        await ExecuteFunction(menuOption, () => ExecuteGetBybitServerTime());
+                        Console.Clear();
+                        _printerService.PrintMessage($"[{menuOption.ToString().Replace("_", " ")} SELECTED]");
+                        await ExecuteGetBybitServerTime();
                         break;
                     case MainMenuOptions.EXIT:
                         shouldExit = true;
@@ -108,13 +125,6 @@ namespace ByBItBots.Helpers.Implementations
             }
 
             StopBot();
-        }
-
-        private async Task ExecuteFunction(MainMenuOptions menuOption, Func<Task> function)
-        {
-            Console.Clear();
-            _printerService.PrintMessage($"[{menuOption.ToString().Replace("_", " ")} SELECTED]");
-            await function.Invoke();
         }
 
         private async Task ExecuteGetOpenOrdersAsync()
