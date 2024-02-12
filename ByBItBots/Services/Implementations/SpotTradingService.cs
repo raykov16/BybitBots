@@ -176,7 +176,7 @@ namespace ByBItBots.Services.Implementations
                 Console.WriteLine($"Accumulated volume : {tradedVolume} / {requiredVolume}");
             }
 
-            Console.WriteLine($"Succesfuly acumulated {tradedVolume} volume for {DateTime.UtcNow.TimeOfDay - timeStarted.TimeOfDay}!");
+            Console.WriteLine($"Successfuly accumulated {tradedVolume} volume for {DateTime.UtcNow.TimeOfDay - timeStarted.TimeOfDay}!");
         }
 
         public async Task BuySellSpotCoinFirstAsync(string symbol, decimal capital, Side side)
