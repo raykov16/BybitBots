@@ -23,7 +23,9 @@ namespace ByBItBots.Services.Implementations
             _coinDataService = coinDataService;
         }
 
+        //TO DO:
         // ako predniq order ne e fillnat predi zapochvaneto - cancelirash go i go puskash na novo na segashnite ceni
+        // kogato tradevash skup coin - BTC, zakruglqiki na .2 decimals dava 0.00 quantity. Napravi go da zakruglq na .4 kogato sumata e golqma
         public async Task FarmSpotVolumeAsync(string coin, decimal capital, decimal requiredVolume, int requestInterval = 5, decimal maxPricePercentDiff = 0.01m, int minutesWithoutTrade = 5)
         {
             decimal tradedVolume = 0m;
@@ -117,11 +119,13 @@ namespace ByBItBots.Services.Implementations
 
                     if (side == Side.SELL)
                     {
-                        quantity = Math.Round(decimal.Parse(previousOrderInfo.Quantity), 2);
+                        quantity = Math.Round(decimal.Parse(previousOrderInfo.Quantity));
+                        Console.WriteLine($"Quantity to sell: {quantity}, Previous bought quantity: {previousOrderInfo.Quantity}");
                     }
                     else
                     {
-                        quantity = Math.Round(capital / currentPrice, 2);
+                        quantity = Math.Round(capital / currentPrice);
+                        Console.WriteLine($"Quantity to buy: {quantity}");
                     }
 
                     var placeOrderResult = await _orderService.PlaceOrderAsync(Category.SPOT, coin, side, OrderType.LIMIT, $"{quantity}", $"{currentPrice}");
