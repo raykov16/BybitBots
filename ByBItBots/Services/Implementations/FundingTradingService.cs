@@ -1,6 +1,7 @@
 ﻿using bybit.net.api.ApiServiceImp;
 using bybit.net.api.Models;
 using ByBitBots.DTOs;
+using ByBItBots.Constants;
 using ByBItBots.Results;
 using ByBItBots.Services.Interfaces;
 using Newtonsoft.Json;
@@ -13,16 +14,19 @@ namespace ByBItBots.Services.Implementations
         private readonly IOrderService _orderService;
         private readonly ICoinDataService _coinDataService;
         private readonly IBybitTimeService _timeService;
+        private readonly IPrinterService _printService;
 
         public FundingTradingService(BybitMarketDataService marketService
             , IOrderService orderService
             , ICoinDataService coinDataService
-            , IBybitTimeService timeService)
+            , IBybitTimeService timeService
+            , IPrinterService printerService)
         {
             _marketService = marketService;
             _orderService = orderService;
             _coinDataService = coinDataService;
             _timeService = timeService;
+            _printService = printerService;
         }
 
         public async Task<List<CoinShortInfo>> GetCoinsForFundingTradingAsync()
@@ -60,7 +64,7 @@ namespace ByBItBots.Services.Implementations
                 var mostProfitableCoin = fundingCoins[0];
 
                 var bybitTime = await _timeService.GetCurrentBybitTimeAsync();
-                Console.WriteLine($"Bybit time: {bybitTime}");
+                _printService.PrintMessage($"Bybit time: {bybitTime}");
 
                 if (fundingCoins.Count != 0)
                 {
@@ -100,7 +104,7 @@ namespace ByBItBots.Services.Implementations
 
             if (info == null || info.Result.List.Count == 0)
             {
-                throw new InvalidOperationException("Could not retrieve derivatives coins");
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_RETRIVE_DERIVATIVES_COINS);
             }
 
             return info.Result.List

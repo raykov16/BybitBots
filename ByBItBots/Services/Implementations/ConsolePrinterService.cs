@@ -1,5 +1,6 @@
 ﻿using bybit.net.api.Models;
 using ByBitBots.DTOs;
+using ByBItBots.Constants;
 using ByBItBots.DTOs.Menus;
 using ByBItBots.Services.Interfaces;
 
@@ -7,6 +8,10 @@ namespace ByBItBots.Services.Implementations
 {
     public class ConsolePrinterService : IPrinterService
     {
+        private const string DEFAULT_COLUMN_EDGE = "|";
+        private const string DEFAULT_ROW_EDGE = " ";
+        private const char DEFAULT_ROW_BODY = '_';
+        private const int DEFAULT_ROW_BODY_LENGTH = 48;
         public void PrintMenu(MenuModel menu)
         {
             printRow(menu.RowLength, menu.RowBody, menu.HeaderEdges);
@@ -34,16 +39,19 @@ namespace ByBItBots.Services.Implementations
         {
             foreach (var c in fittingCoin)
             {
-                Console.WriteLine("-------------------------------------------");
-                Console.WriteLine($"Coin: {c.Symbol}");
-                Console.WriteLine($"Price: {c.Price}");
-                if(category == Category.LINEAR)
-                    Console.WriteLine($"Funding rate: {c.FundingRate}");
-                Console.WriteLine("-------------------------------------------");
+                printRow(DEFAULT_ROW_BODY_LENGTH, DEFAULT_ROW_BODY); // 50
+                printEmptyColumn(DEFAULT_ROW_BODY_LENGTH, DEFAULT_COLUMN_EDGE); // 50
+                printColumnWithText($"Coin: {c.Symbol}", DEFAULT_ROW_BODY_LENGTH - DEFAULT_COLUMN_EDGE.Length * 2, 1, DEFAULT_COLUMN_EDGE);
+                printColumnWithText($"Price: {c.Price}", DEFAULT_ROW_BODY_LENGTH - DEFAULT_COLUMN_EDGE.Length * 2, 1, DEFAULT_COLUMN_EDGE);
+
+                if (category == Category.LINEAR)
+                    printColumnWithText($"Funding rate: {c.FundingRate}", DEFAULT_ROW_BODY_LENGTH - DEFAULT_COLUMN_EDGE.Length * 2, 1, DEFAULT_COLUMN_EDGE);
+
+                printRow(DEFAULT_ROW_BODY_LENGTH, DEFAULT_ROW_BODY, DEFAULT_COLUMN_EDGE);
             }
         }
     
-        private void printRow(int rowLength, char rowBody = ' ', string rowEdges = "")
+        private void printRow(int rowLength, char rowBody = DEFAULT_ROW_BODY, string rowEdges = DEFAULT_ROW_EDGE)
         {
             string mainRow = rowEdges;
             mainRow += new string(rowBody, rowLength - rowEdges.Length * 2);
@@ -52,14 +60,14 @@ namespace ByBItBots.Services.Implementations
             Console.WriteLine(mainRow);
         }
 
-        private void printColumnWithText(string text, int rowBodyLength, int times = 1, string columnEdge = "")
+        private void printColumnWithText(string text, int contentSpace, int times = 1, string columnEdge = DEFAULT_COLUMN_EDGE)
         {
-            if (text.Length > rowBodyLength)
+            if (text.Length > contentSpace)
             {
-                throw new InvalidOperationException($"The text length ({text.Length}) should not exceed the row's body length ({rowBodyLength})");
+                throw new InvalidOperationException(string.Format(ErrorMessages.TEXT_LENGTH_EXCEEDS_BODY_LENGTH, text.Length, contentSpace));
             }
 
-            var emptySpaces = rowBodyLength - text.Length;
+            var emptySpaces = contentSpace - text.Length;
             var leftSideEmptySpaces = 0;
             var rightSideEmptySpaces = 0;
 
@@ -83,7 +91,7 @@ namespace ByBItBots.Services.Implementations
         }
 
 
-        private void printEmptyColumn(int rowLength, string columnEdges = "", int times = 1)
+        private void printEmptyColumn(int rowLength, string columnEdges = DEFAULT_COLUMN_EDGE, int times = 1)
         {
             string column = columnEdges;
             column += new string(' ', rowLength - columnEdges.Length * 2);

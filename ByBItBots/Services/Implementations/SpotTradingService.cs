@@ -5,6 +5,7 @@ using ByBItBots.Results;
 using Newtonsoft.Json;
 using ByBItBots.Services.Interfaces;
 using ByBitBots.DTOs;
+using ByBItBots.Constants;
 
 namespace ByBItBots.Services.Implementations
 {
@@ -13,24 +14,28 @@ namespace ByBItBots.Services.Implementations
         private readonly BybitMarketDataService _marketService;
         private readonly IOrderService _orderService;
         private readonly ICoinDataService _coinDataService;
+        private readonly IPrinterService _printerService;
 
         public SpotTradingService(BybitMarketDataService marketService
             , IOrderService orderService
-            , ICoinDataService coinDataService)
+            , ICoinDataService coinDataService
+            , IPrinterService printerService)
         {
             _marketService = marketService;
             _orderService = orderService;
             _coinDataService = coinDataService;
+            _printerService = printerService;
         }
 
         //TO DO:
         // ako predniq order ne e fillnat predi zapochvaneto - cancelirash go i go puskash na novo na segashnite ceni
         // kogato tradevash skup coin - BTC, zakruglqiki na .2 decimals dava 0.00 quantity. Napravi go da zakruglq na .4 kogato sumata e golqma
+        // ako voluma e gotov no posledniq order e bil BUY, Prodai
         public async Task FarmSpotVolumeAsync(string coin, decimal capital, decimal requiredVolume, int requestInterval = 5, decimal maxPricePercentDiff = 0.01m, int minutesWithoutTrade = 5)
         {
             decimal tradedVolume = 0m;
             bool shouldBuy = true;
-            decimal quantity;
+            string quantity;
             int timesWithouthTrade = 0;
 
             if (minutesWithoutTrade > 0)
@@ -45,25 +50,25 @@ namespace ByBItBots.Services.Implementations
             {
                 // check for open orders
                 var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin);
-                Console.WriteLine("Got open orders");
+                _printerService.PrintMessage("Got open orders");
 
                 if (openOrdersResult.RetMsg != "OK")
                 {
-                    Console.WriteLine(openOrdersResult.RetMsg);
+                    _printerService.PrintMessage(openOrdersResult.RetMsg);
                     break;
                 }
 
                 if (openOrdersResult.Result.List.Count > 0)
-                    Console.WriteLine("Order price " + openOrdersResult.Result.List[0].Price);
+                    _printerService.PrintMessage("Order price " + openOrdersResult.Result.List[0].Price);
 
                 var currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.SPOT);
-                Console.WriteLine("Got price");
-                Console.WriteLine($"market price {currentPrice}");
+                _printerService.PrintMessage("Got price");
+                _printerService.PrintMessage($"market price {currentPrice}");
 
                 //ako ima otvoren order i cenata na toq order se razminava ot segashnata cena - vlizame
                 if (openOrdersResult.Result.List.Count == 0)
                 {
-                    Console.WriteLine("No orders found, opening an order!");
+                    _printerService.PrintMessage("No orders found, opening an order!");
 
                     if (tradedVolume >= requiredVolume)
                         break;
@@ -92,45 +97,63 @@ namespace ByBItBots.Services.Implementations
                             shouldBuy = true;
                         }
 
-                        Console.WriteLine("Previous side: " + previousSide);
+                        _printerService.PrintMessage("Previous side: " + previousSide);
                     }
 
                     var side = shouldBuy ? Side.BUY : Side.SELL;
 
-                    Console.WriteLine("Current side: " + side);
+                    _printerService.PrintMessage("Current side: " + side);
 
                     currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.SPOT);
-                    Console.WriteLine("getting price");
+                    _printerService.PrintMessage("getting price");
 
                     var priceDiff = CalculatePercentageDifference(previousPrice, currentPrice);
 
                     if (side == Side.SELL && priceDiff > maxPricePercentDiff && currentPrice <= previousPrice && currentTimesWithoutTrade < timesWithouthTrade)
                     {
-                        Console.WriteLine($"Price diff: {priceDiff}, sell order will not be placed!");
-                        Console.WriteLine($"Times without trade: {++currentTimesWithoutTrade}");
+                        _printerService.PrintMessage($"Price diff: {priceDiff}, sell order will not be placed!");
+                        _printerService.PrintMessage($"Times without trade: {++currentTimesWithoutTrade}");
                         Thread.Sleep(requestInterval);
                         continue;
                     }
                     else
                     {
                         currentTimesWithoutTrade = 0;
-                        Console.WriteLine($"Reseting times without trade to: {currentTimesWithoutTrade}");
+                        _printerService.PrintMessage($"Reseting times without trade to: {currentTimesWithoutTrade}");
                     }
 
                     if (side == Side.SELL)
                     {
-                        quantity = Math.Round(decimal.Parse(previousOrderInfo.Quantity));
-                        Console.WriteLine($"Quantity to sell: {quantity}, Previous bought quantity: {previousOrderInfo.Quantity}");
+                        if (decimal.Parse(previousOrderInfo.Quantity) < 1)
+                        {
+                            quantity = TrimSmallQuantity(previousOrderInfo.Quantity);
+                        }
+                        else
+                        {
+                            quantity = previousOrderInfo.Quantity;
+                        }
+
+                        _printerService.PrintMessage($"Quantity to sell: {quantity}, Previous bought quantity: {previousOrderInfo.Quantity}");
                     }
                     else
                     {
-                        quantity = Math.Round(capital / currentPrice);
-                        Console.WriteLine($"Quantity to buy: {quantity}");
+                        var quantityToBuy = capital / currentPrice;
+
+                        if (quantityToBuy < 1)
+                        {
+                            quantity = TrimSmallQuantity(quantityToBuy.ToString());
+                        }
+                        else
+                        {
+                            quantity = quantityToBuy.ToString();
+                        }
+
+                        _printerService.PrintMessage($"Quantity to buy: {quantity}");
                     }
 
                     var placeOrderResult = await _orderService.PlaceOrderAsync(Category.SPOT, coin, side, OrderType.LIMIT, $"{quantity}", $"{currentPrice}");
 
-                    Console.WriteLine("Placed order result: " + placeOrderResult.RetMsg);
+                    _printerService.PrintMessage("Placed order result: " + placeOrderResult.RetMsg);
 
                     if (placeOrderResult.RetMsg == "OK")
                     {
@@ -139,7 +162,7 @@ namespace ByBItBots.Services.Implementations
                 }
                 else if (decimal.Parse(openOrdersResult.Result.List[0].Price) != currentPrice)
                 {
-                    Console.WriteLine("Open order price difference, changing price!");
+                    _printerService.PrintMessage("Open order price difference, changing price!");
                     // pak vzimame  segashnata cena i izchislqvame quantitito          
 
                     var previousOrderInfo = await _orderService.GetLastOrderInfoAsync(coin);
@@ -148,21 +171,21 @@ namespace ByBItBots.Services.Implementations
                     var previousPrice = decimal.Parse(previousOrderInfo.Price);
 
                     currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.SPOT);
-                    Console.WriteLine("getting price");
+                    _printerService.PrintMessage("getting price");
 
                     var pricePercentDiff = CalculatePercentageDifference(previousPrice, currentPrice);
 
                     if (previousSide == Side.BUY && pricePercentDiff > maxPricePercentDiff && currentPrice < previousPrice && currentTimesWithoutTrade <= timesWithouthTrade)
                     {
-                        Console.WriteLine($"Price diff: {pricePercentDiff}, existing order price will not be changed!");
-                        Console.WriteLine($"Times without trade: {++currentTimesWithoutTrade}");
+                        _printerService.PrintMessage($"Price diff: {pricePercentDiff}, existing order price will not be changed!");
+                        _printerService.PrintMessage($"Times without trade: {++currentTimesWithoutTrade}");
                         Thread.Sleep(requestInterval);
                         continue;
                     }
                     else
                     {
                         currentTimesWithoutTrade = 0;
-                        Console.WriteLine($"Reseting times without trade to: {currentTimesWithoutTrade}");
+                        _printerService.PrintMessage($"Reseting times without trade to: {currentTimesWithoutTrade}");
                     }
 
                     // updeitvame ordera sus segashnata cena i podhodqshtoto quantity
@@ -171,16 +194,16 @@ namespace ByBItBots.Services.Implementations
                         openOrdersResult.Result.List[0].OrderId,
                         $"{currentPrice}");
 
-                    Console.WriteLine("Ammended order result: " + amendOrderResult);
+                    _printerService.PrintMessage("Ammended order result: " + amendOrderResult);
                 }
 
-                Console.WriteLine($"waiting {requestInterval / 1000} sec");
+                _printerService.PrintMessage($"waiting {requestInterval / 1000} sec");
                 Thread.Sleep(requestInterval);
-                Console.WriteLine($"waited {requestInterval / 1000} sec, starting again");
-                Console.WriteLine($"Accumulated volume : {tradedVolume} / {requiredVolume}");
+                _printerService.PrintMessage($"waited {requestInterval / 1000} sec, starting again");
+                _printerService.PrintMessage($"Accumulated volume : {tradedVolume} / {requiredVolume}");
             }
 
-            Console.WriteLine($"Successfuly accumulated {tradedVolume} volume for {DateTime.UtcNow.TimeOfDay - timeStarted.TimeOfDay}!");
+            _printerService.PrintMessage($"Successfuly accumulated {tradedVolume} volume for {DateTime.UtcNow.TimeOfDay - timeStarted.TimeOfDay}!");
         }
 
         public async Task BuySellSpotCoinFirstAsync(string symbol, decimal capital, Side side)
@@ -189,7 +212,7 @@ namespace ByBItBots.Services.Implementations
 
             while (fittingCoins.Count == 0)
             {
-                Console.WriteLine("Coin not listed yet!");
+                _printerService.PrintMessage("Coin not listed yet!");
                 fittingCoins = await GetSpotCoinsAsync(symbol);
             }
 
@@ -204,7 +227,7 @@ namespace ByBItBots.Services.Implementations
             {
                 if (previousOrderInfo == null)
                 {
-                    Console.WriteLine("Can not sell something that you have not bought. Exiting...");
+                    _printerService.PrintMessage("Can not sell something that you have not bought. Exiting...");
                     return;
                 }
 
@@ -216,12 +239,12 @@ namespace ByBItBots.Services.Implementations
             }
 
             var placeOrderResult = await _orderService.PlaceOrderAsync(Category.SPOT, coin.Symbol, side, OrderType.LIMIT, quantity.ToString(), currentPrice.ToString());
-            Console.WriteLine($"Placed order result: {placeOrderResult.RetMsg}");
+            _printerService.PrintMessage($"Placed order result: {placeOrderResult.RetMsg}");
 
             while (placeOrderResult.RetMsg != "OK")
             {
                 placeOrderResult = await _orderService.PlaceOrderAsync(Category.SPOT, coin.Symbol, side, OrderType.LIMIT, quantity.ToString(), currentPrice.ToString());
-                Console.WriteLine($"Placed order result: {placeOrderResult.RetMsg}");
+                _printerService.PrintMessage($"Placed order result: {placeOrderResult.RetMsg}");
             }
 
             var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin.Symbol);
@@ -245,12 +268,12 @@ namespace ByBItBots.Services.Implementations
                         $"{quantity}",
                         $"{currentPrice}");
 
-                Console.WriteLine("Ammended order result: " + amendOrderResult);
+                _printerService.PrintMessage("Ammended order result: " + amendOrderResult);
 
                 openOrdersResult = await _orderService.GetOpenOrdersAsync(coin.Symbol);
             }
 
-            Console.WriteLine($"Successfuly traded {quantity} {coin}");
+            _printerService.PrintMessage($"Successfuly traded {quantity} {coin}");
         }
 
         /// <summary>
@@ -266,7 +289,7 @@ namespace ByBItBots.Services.Implementations
 
             if (info == null || info.Result.List.Count == 0)
             {
-                throw new InvalidOperationException("Market info could not be read, please check if the provided coin was correct");
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_RETRIVE_MARKET_INFO);
             }
 
             return info.Result.List
@@ -288,6 +311,26 @@ namespace ByBItBots.Services.Implementations
             decimal percentageDifference = (absoluteDifference / average) * 100;
 
             return Math.Round(percentageDifference, 2);
+        }
+
+        private string TrimSmallQuantity(string quantity)
+        {
+            List<char> trimmedZerosNumber = new List<char>();
+
+            for (int i = quantity.Length - 1; i >= 0; i--)
+            {
+                if (quantity[i] == '0' && trimmedZerosNumber.Count == 0)
+                {
+                    continue;
+                }
+
+                trimmedZerosNumber.Add(quantity[i]);
+            }
+
+            trimmedZerosNumber.Reverse();
+
+            // Trim quantity to be with no more than 4 decimals - 0.0000
+            return string.Join("", trimmedZerosNumber.Take(6));
         }
     }
 }

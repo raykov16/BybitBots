@@ -1,5 +1,6 @@
 ﻿using bybit.net.api.ApiServiceImp;
 using ByBitBots.DTOs;
+using ByBItBots.Constants;
 using ByBItBots.Services.Interfaces;
 using Newtonsoft.Json;
 
@@ -20,7 +21,7 @@ namespace ByBItBots.Services.Implementations
 
             if (bybitTimeObject == null)
             {
-                throw new InvalidOperationException("Could not retrieve bybit time.");
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_RETRIVE_BYBIT_TIME);
             }
 
             return ReadBybitTime(bybitTimeObject.Result.TimeSecond);

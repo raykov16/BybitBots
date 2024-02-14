@@ -1,6 +1,7 @@
 ﻿using bybit.net.api.ApiServiceImp;
 using bybit.net.api.Models;
 using ByBitBots.DTOs;
+using ByBItBots.Constants;
 using ByBItBots.Results;
 using ByBItBots.Services.Interfaces;
 using Newtonsoft.Json;
@@ -32,7 +33,7 @@ namespace ByBItBots.Services.Implementations
 
             if (instrumentInfo == null)
             {
-                throw new InvalidOperationException("Could not retrieve coin info");
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_RETRIVE_COIN_INFO);
             }
 
             var arr = new string[100];
@@ -49,7 +50,7 @@ namespace ByBItBots.Services.Implementations
 
             if (info == null)
             {
-                throw new InvalidOperationException("Could not retrieve market info");
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_RETRIVE_MARKET_INFO);
             }
 
             var coin = new CoinShortInfo();

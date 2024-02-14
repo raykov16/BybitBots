@@ -5,6 +5,7 @@ using ByBItBots.Results;
 using Newtonsoft.Json;
 using ByBItBots.Services.Interfaces;
 using ByBitBots.DTOs;
+using ByBItBots.Constants;
 
 namespace ByBItBots.Services.Implementations
 {
@@ -87,7 +88,7 @@ namespace ByBItBots.Services.Implementations
 
             if (openOrdersResult == null)
             {
-                throw new InvalidOperationException("Open orders could not be retrieved");
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_RETRIVE_OPEN_ORDERS);
             }
 
             return openOrdersResult;
@@ -100,7 +101,7 @@ namespace ByBItBots.Services.Implementations
 
             if (orderHistory == null)
             {
-                throw new InvalidOperationException("Order history could not be retrieved");
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_RETRIVE_ORDER_HISTORY);
             }
 
             if (orderHistoryResult.Result.List.Count == 0)
@@ -125,7 +126,7 @@ namespace ByBItBots.Services.Implementations
 
             if (result == null)
             {
-                throw new InvalidOperationException("Order could not be placed!");
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_OPEN_ORDER);
             }
 
             return result;
@@ -137,7 +138,7 @@ namespace ByBItBots.Services.Implementations
 
             if (result == null)
             {
-                throw new InvalidOperationException("Could not amend order!");
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_AMEND_ORDER);
             }
 
             return result;
@@ -149,7 +150,7 @@ namespace ByBItBots.Services.Implementations
 
             if (result == null)
             {
-                throw new InvalidOperationException("Could not amend order!");
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_AMEND_ORDER);
             }
 
             return result;
