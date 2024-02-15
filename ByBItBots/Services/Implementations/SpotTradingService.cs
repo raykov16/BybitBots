@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using ByBItBots.Services.Interfaces;
 using ByBitBots.DTOs;
 using ByBItBots.Constants;
+using static ByBItBots.Constants.InfoMessages;
 
 namespace ByBItBots.Services.Implementations
 {
@@ -28,8 +29,6 @@ namespace ByBItBots.Services.Implementations
         }
 
         //TO DO:
-        // ako predniq order ne e fillnat predi zapochvaneto - cancelirash go i go puskash na novo na segashnite ceni
-        // kogato tradevash skup coin - BTC, zakruglqiki na .2 decimals dava 0.00 quantity. Napravi go da zakruglq na .4 kogato sumata e golqma
         // ako voluma e gotov no posledniq order e bil BUY, Prodai
         public async Task FarmSpotVolumeAsync(string coin, decimal capital, decimal requiredVolume, int requestInterval = 5, decimal maxPricePercentDiff = 0.01m, int minutesWithoutTrade = 5)
         {
@@ -50,7 +49,7 @@ namespace ByBItBots.Services.Implementations
             {
                 // check for open orders
                 var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin);
-                _printerService.PrintMessage("Got open orders");
+                _printerService.PrintMessage(GOT_OPEN_ORDERS);
 
                 if (openOrdersResult.RetMsg != "OK")
                 {
@@ -59,16 +58,15 @@ namespace ByBItBots.Services.Implementations
                 }
 
                 if (openOrdersResult.Result.List.Count > 0)
-                    _printerService.PrintMessage("Order price " + openOrdersResult.Result.List[0].Price);
+                    _printerService.PrintMessage(string.Format(ORDER_PRICE, openOrdersResult.Result.List[0].Price));
 
                 var currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.SPOT);
-                _printerService.PrintMessage("Got price");
-                _printerService.PrintMessage($"market price {currentPrice}");
+                _printerService.PrintMessage(string.Format(MARKET_PRICE, currentPrice));
 
                 //ako ima otvoren order i cenata na toq order se razminava ot segashnata cena - vlizame
                 if (openOrdersResult.Result.List.Count == 0)
                 {
-                    _printerService.PrintMessage("No orders found, opening an order!");
+                    _printerService.PrintMessage(OPENING_ORDER);
 
                     if (tradedVolume >= requiredVolume)
                         break;
@@ -97,29 +95,29 @@ namespace ByBItBots.Services.Implementations
                             shouldBuy = true;
                         }
 
-                        _printerService.PrintMessage("Previous side: " + previousSide);
+                        _printerService.PrintMessage(string.Format(PREVIOUS_SIDE, previousSide));
                     }
 
                     var side = shouldBuy ? Side.BUY : Side.SELL;
 
-                    _printerService.PrintMessage("Current side: " + side);
+                    _printerService.PrintMessage(string.Format(CURRENT_SIDE, side));
 
                     currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.SPOT);
-                    _printerService.PrintMessage("getting price");
+                    _printerService.PrintMessage(GETTING_PRICE);
 
                     var priceDiff = CalculatePercentageDifference(previousPrice, currentPrice);
 
                     if (side == Side.SELL && priceDiff > maxPricePercentDiff && currentPrice <= previousPrice && currentTimesWithoutTrade < timesWithouthTrade)
                     {
-                        _printerService.PrintMessage($"Price diff: {priceDiff}, sell order will not be placed!");
-                        _printerService.PrintMessage($"Times without trade: {++currentTimesWithoutTrade}");
+                        _printerService.PrintMessage(string.Format(PRICE_DIFF_TOO_LARGE, priceDiff));
+                        _printerService.PrintMessage(string.Format(TIMES_WITHOUT_TRADE, ++currentTimesWithoutTrade));
                         Thread.Sleep(requestInterval);
                         continue;
                     }
                     else
                     {
                         currentTimesWithoutTrade = 0;
-                        _printerService.PrintMessage($"Reseting times without trade to: {currentTimesWithoutTrade}");
+                        _printerService.PrintMessage(RESETING_TIMES_WITHOUT_TRADE);
                     }
 
                     if (side == Side.SELL)
@@ -133,7 +131,7 @@ namespace ByBItBots.Services.Implementations
                             quantity = previousOrderInfo.Quantity;
                         }
 
-                        _printerService.PrintMessage($"Quantity to sell: {quantity}, Previous bought quantity: {previousOrderInfo.Quantity}");
+                        _printerService.PrintMessage(string.Format(QUANTITY_TO_SELL, quantity, previousOrderInfo.Quantity));
                     }
                     else
                     {
@@ -148,12 +146,12 @@ namespace ByBItBots.Services.Implementations
                             quantity = quantityToBuy.ToString();
                         }
 
-                        _printerService.PrintMessage($"Quantity to buy: {quantity}");
+                        _printerService.PrintMessage(string.Format(QUANTITY_TO_BUY, quantity, previousOrderInfo.Quantity));
                     }
 
                     var placeOrderResult = await _orderService.PlaceOrderAsync(Category.SPOT, coin, side, OrderType.LIMIT, $"{quantity}", $"{currentPrice}");
 
-                    _printerService.PrintMessage("Placed order result: " + placeOrderResult.RetMsg);
+                    _printerService.PrintMessage(string.Format(PLACED_ORDER_RESULT, placeOrderResult.RetMsg));
 
                     if (placeOrderResult.RetMsg == "OK")
                     {
@@ -162,7 +160,7 @@ namespace ByBItBots.Services.Implementations
                 }
                 else if (decimal.Parse(openOrdersResult.Result.List[0].Price) != currentPrice)
                 {
-                    _printerService.PrintMessage("Open order price difference, changing price!");
+                    _printerService.PrintMessage(OPEN_ORDER_PRICE_DIFF);
                     // pak vzimame  segashnata cena i izchislqvame quantitito          
 
                     var previousOrderInfo = await _orderService.GetLastOrderInfoAsync(coin);
@@ -171,21 +169,21 @@ namespace ByBItBots.Services.Implementations
                     var previousPrice = decimal.Parse(previousOrderInfo.Price);
 
                     currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.SPOT);
-                    _printerService.PrintMessage("getting price");
+                    _printerService.PrintMessage(GETTING_PRICE);
 
                     var pricePercentDiff = CalculatePercentageDifference(previousPrice, currentPrice);
 
                     if (previousSide == Side.BUY && pricePercentDiff > maxPricePercentDiff && currentPrice < previousPrice && currentTimesWithoutTrade <= timesWithouthTrade)
                     {
-                        _printerService.PrintMessage($"Price diff: {pricePercentDiff}, existing order price will not be changed!");
-                        _printerService.PrintMessage($"Times without trade: {++currentTimesWithoutTrade}");
+                        _printerService.PrintMessage(string.Format(PRICE_DIFF_TOO_SMALL, pricePercentDiff));
+                        _printerService.PrintMessage(string.Format(TIMES_WITHOUT_TRADE, ++currentTimesWithoutTrade));
                         Thread.Sleep(requestInterval);
                         continue;
                     }
                     else
                     {
                         currentTimesWithoutTrade = 0;
-                        _printerService.PrintMessage($"Reseting times without trade to: {currentTimesWithoutTrade}");
+                        _printerService.PrintMessage(RESETING_TIMES_WITHOUT_TRADE);
                     }
 
                     // updeitvame ordera sus segashnata cena i podhodqshtoto quantity
@@ -194,16 +192,16 @@ namespace ByBItBots.Services.Implementations
                         openOrdersResult.Result.List[0].OrderId,
                         $"{currentPrice}");
 
-                    _printerService.PrintMessage("Ammended order result: " + amendOrderResult);
+                    _printerService.PrintMessage(string.Format(AMEND_ORDER_RESULT, amendOrderResult));
                 }
 
-                _printerService.PrintMessage($"waiting {requestInterval / 1000} sec");
+                _printerService.PrintMessage(string.Format(WAITING_SECONDS, requestInterval / 1000));
                 Thread.Sleep(requestInterval);
-                _printerService.PrintMessage($"waited {requestInterval / 1000} sec, starting again");
-                _printerService.PrintMessage($"Accumulated volume : {tradedVolume} / {requiredVolume}");
+                _printerService.PrintMessage(string.Format(WAITED_SECONDS, requestInterval / 1000));
+                _printerService.PrintMessage(string.Format(ACCUMULATED_VOLUME, tradedVolume, requiredVolume));
             }
 
-            _printerService.PrintMessage($"Successfuly accumulated {tradedVolume} volume for {DateTime.UtcNow.TimeOfDay - timeStarted.TimeOfDay}!");
+            _printerService.PrintMessage(string.Format(SUCCESSFULY_ACCUMULATED_VOLUME, tradedVolume, DateTime.UtcNow.TimeOfDay - timeStarted.TimeOfDay));
         }
 
         public async Task BuySellSpotCoinFirstAsync(string symbol, decimal capital, Side side)

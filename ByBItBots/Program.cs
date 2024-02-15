@@ -1,6 +1,6 @@
 ﻿using bybit.net.api.ApiServiceImp;
-using ByBitBots.DTOs;
 using ByBItBots.Configs;
+using ByBItBots.Constants;
 using ByBItBots.DTOs.Menus;
 using ByBItBots.Enums;
 using ByBItBots.Helpers.Implementations;
@@ -21,12 +21,12 @@ IConfig config;
 if (userChoice == BybitNets.TESTNET)
 {
     config = new TestnetConfig();
-    Console.WriteLine("[USING TESTNET]");
+    printer.PrintMessage(InfoMessages.USING_TEST_NET);
 }
 else
 {
     config = new MainnetConfig();
-    Console.WriteLine("[USING MAINNET]");
+    printer.PrintMessage(InfoMessages.USING_TEST_NET);
 }
 
 
@@ -66,17 +66,15 @@ BybitNets ChooseNet()
 
     if (userChoice.Key == ConsoleKey.D1)
     {
-        Console.WriteLine("[USING TESTNET]");
         return BybitNets.TESTNET;
     }
     else if (userChoice.Key == ConsoleKey.D2)
     {
-        Console.WriteLine("[USING MAINNET]");
         return BybitNets.MAINNET;
     }
     else
     {
-        Console.WriteLine("Please press one of the specified buttons");
+        printer.PrintMessage(InfoMessages.PRESS_SPECIFIED_BUTTON);
         return ChooseNet();
     }
 }
