@@ -210,7 +210,7 @@ namespace ByBItBots.Services.Implementations
 
             while (fittingCoins.Count == 0)
             {
-                _printerService.PrintMessage("Coin not listed yet!");
+                _printerService.PrintMessage(COIN_NOT_LISTED);
                 fittingCoins = await GetSpotCoinsAsync(symbol);
             }
 
@@ -225,7 +225,7 @@ namespace ByBItBots.Services.Implementations
             {
                 if (previousOrderInfo == null)
                 {
-                    _printerService.PrintMessage("Can not sell something that you have not bought. Exiting...");
+                    _printerService.PrintMessage(CANT_SELL);
                     return;
                 }
 
@@ -237,12 +237,12 @@ namespace ByBItBots.Services.Implementations
             }
 
             var placeOrderResult = await _orderService.PlaceOrderAsync(Category.SPOT, coin.Symbol, side, OrderType.LIMIT, quantity.ToString(), currentPrice.ToString());
-            _printerService.PrintMessage($"Placed order result: {placeOrderResult.RetMsg}");
+            _printerService.PrintMessage(string.Format(PLACED_ORDER_RESULT, placeOrderResult.RetMsg));
 
             while (placeOrderResult.RetMsg != "OK")
             {
                 placeOrderResult = await _orderService.PlaceOrderAsync(Category.SPOT, coin.Symbol, side, OrderType.LIMIT, quantity.ToString(), currentPrice.ToString());
-                _printerService.PrintMessage($"Placed order result: {placeOrderResult.RetMsg}");
+                _printerService.PrintMessage(string.Format(PLACED_ORDER_RESULT, placeOrderResult.RetMsg));
             }
 
             var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin.Symbol);
@@ -266,12 +266,12 @@ namespace ByBItBots.Services.Implementations
                         $"{quantity}",
                         $"{currentPrice}");
 
-                _printerService.PrintMessage("Ammended order result: " + amendOrderResult);
+                _printerService.PrintMessage(string.Format(AMEND_ORDER_RESULT, amendOrderResult));
 
                 openOrdersResult = await _orderService.GetOpenOrdersAsync(coin.Symbol);
             }
 
-            _printerService.PrintMessage($"Successfuly traded {quantity} {coin}");
+            _printerService.PrintMessage(string.Format(SUCCESSFULY_TRADED_COIN, quantity, coin));
         }
 
         /// <summary>

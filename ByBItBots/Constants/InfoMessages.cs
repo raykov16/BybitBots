@@ -1,6 +1,4 @@
-﻿using ByBItBots.Results;
-
-namespace ByBItBots.Constants
+﻿namespace ByBItBots.Constants
 {
     public static class InfoMessages
     {
@@ -36,5 +34,12 @@ namespace ByBItBots.Constants
         public const string ACCUMULATED_VOLUME = "Accumulated volume : {0} / {1}";
 
         public const string SUCCESSFULY_ACCUMULATED_VOLUME = "Successfuly accumulated {0} volume for {1}!";
+        public const string SUCCESSFULY_TRADED_COIN = "Successfuly traded {0} {1}";
+
+        public const string BYBIT_TIME = "Bybit time: {0}";
+
+        public const string COIN_NOT_LISTED = "Coin not listed yet!";
+
+        public const string CANT_SELL = "Can not sell something that you have not bought. Exiting...";
     }
 }
