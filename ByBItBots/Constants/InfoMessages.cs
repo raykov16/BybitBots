@@ -12,6 +12,7 @@
         public const string PLACED_ORDER_RESULT = "Placed order result: {0}";
         public const string AMEND_ORDER_RESULT = "Ammended order result: {0}";
         public const string OPEN_ORDER_PRICE_DIFF = "Open order price difference, changing price!";
+        public const string LAST_ORDER_BUY_SIDE = "The last order was on Buy Side. Selling left over quantity.";
 
         public const string GETTING_PRICE = "Getting price";
         public const string ORDER_PRICE = "Order price: {0}";

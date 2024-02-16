@@ -202,6 +202,14 @@ namespace ByBItBots.Services.Implementations
             }
 
             _printerService.PrintMessage(string.Format(SUCCESSFULY_ACCUMULATED_VOLUME, tradedVolume, DateTime.UtcNow.TimeOfDay - timeStarted.TimeOfDay));
+            var lastOrder = await _orderService.GetLastOrderInfoAsync(coin);
+
+            if (lastOrder.Side == Side.BUY)
+            {
+                _printerService.PrintMessage(LAST_ORDER_BUY_SIDE);
+                var orderUSDValude = decimal.Parse(lastOrder.Price) * decimal.Parse(lastOrder.Quantity);
+                await BuySellSpotCoinFirstAsync(coin, orderUSDValude, Side.SELL);
+            }
         }
 
         public async Task BuySellSpotCoinFirstAsync(string symbol, decimal capital, Side side)
@@ -271,7 +279,7 @@ namespace ByBItBots.Services.Implementations
                 openOrdersResult = await _orderService.GetOpenOrdersAsync(coin.Symbol);
             }
 
-            _printerService.PrintMessage(string.Format(SUCCESSFULY_TRADED_COIN, quantity, coin));
+            _printerService.PrintMessage(string.Format(SUCCESSFULY_TRADED_COIN, quantity, coin.Symbol));
         }
 
         /// <summary>
