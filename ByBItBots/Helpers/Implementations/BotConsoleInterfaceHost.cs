@@ -132,7 +132,8 @@ namespace ByBItBots.Helpers.Implementations
             {
                 for (int i = 0; i < openOrdersResult.Result.List.Count; i++)
                 {
-                    _printerService.PrintMessage($"{i}. {openOrdersResult.Result.List[i]}");
+                    var order = openOrdersResult.Result.List[i];
+                    _printerService.PrintMessage($"{i + 1}. {order}");
                 }
             }
         }

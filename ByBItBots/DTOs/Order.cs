@@ -127,5 +127,10 @@ namespace ByBitBots.DTOs
 
         [JsonProperty("updatedTime")]
         public string? UpdatedTime { get; set; }
+
+        public override string ToString()
+        {
+            return $"OrderId: {OrderId}, Coin: {Symbol}, Side: {Side}, Price: {Price}, Quantity: {Qty}, USDT amount: {Math.Round(decimal.Parse(Price) * decimal.Parse(Qty), 2)}";
+        }
     }
 }
