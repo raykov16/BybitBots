@@ -99,7 +99,7 @@ namespace ByBItBots.Services.Implementations
             var orderHistory = await _tradeService.GetOrdersHistory(Category.SPOT, symbol, limit: 1);
             var orderHistoryResult = JsonConvert.DeserializeObject<ApiResponseResult<ResultOpenOrders>>(orderHistory);
 
-            if (orderHistory == null)
+            if (orderHistoryResult == null)
             {
                 throw new InvalidOperationException(ErrorMessages.COULD_NOT_RETRIVE_ORDER_HISTORY);
             }
@@ -132,28 +132,30 @@ namespace ByBItBots.Services.Implementations
             return result;
         }
 
-        public async Task<string> AmendOrderAsync(Category category, string symbol, string orderId, string price)
+        public async Task<ApiResponseResult<OrderResult>> AmendOrderAsync(Category category, string symbol, string orderId, string price)
         {
-            var result = await _tradeService.AmendOrder(category, symbol, orderId: orderId, price: price);
+            var amendOrder = await _tradeService.AmendOrder(category, symbol, orderId: orderId, price: price);
+            var amendOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<OrderResult>>(amendOrder);
 
-            if (result == null)
+            if (amendOrderResult == null)
             {
                 throw new InvalidOperationException(ErrorMessages.COULD_NOT_AMEND_ORDER);
             }
 
-            return result;
+            return amendOrderResult;
         }
 
-        public async Task<string> AmendOrderAsync(Category category, string symbol, string orderId, string quantity, string price)
+        public async Task<ApiResponseResult<OrderResult>> AmendOrderAsync(Category category, string symbol, string orderId, string quantity, string price)
         {
-            var result = await _tradeService.AmendOrder(category, symbol, orderId: orderId, qty: quantity, price: price);
+            var amendOrder = await _tradeService.AmendOrder(category, symbol, orderId: orderId, qty: quantity, price: price);
+            var amendOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<OrderResult>>(amendOrder);
 
-            if (result == null)
+            if (amendOrderResult == null)
             {
                 throw new InvalidOperationException(ErrorMessages.COULD_NOT_AMEND_ORDER);
             }
 
-            return result;
+            return amendOrderResult;
         }
 
         private decimal CalculateTPSLPrice(decimal percentageLose, decimal leverage, decimal coinPrice, bool isTakeProfit)

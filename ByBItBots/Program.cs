@@ -21,12 +21,12 @@ IConfig config;
 if (userChoice == BybitNets.TESTNET)
 {
     config = new TestnetConfig();
-    printer.PrintMessage(InfoMessages.USING_TEST_NET);
+    printer.PrintMessage(InterfaceCommunicationMessages.USING_TEST_NET);
 }
 else
 {
     config = new MainnetConfig();
-    printer.PrintMessage(InfoMessages.USING_TEST_NET);
+    printer.PrintMessage(InterfaceCommunicationMessages.USING_TEST_NET);
 }
 
 
@@ -74,7 +74,7 @@ BybitNets ChooseNet()
     }
     else
     {
-        printer.PrintMessage(InfoMessages.PRESS_SPECIFIED_BUTTON);
+        printer.PrintMessage(InterfaceCommunicationMessages.PRESS_SPECIFIED_BUTTON);
         return ChooseNet();
     }
 }

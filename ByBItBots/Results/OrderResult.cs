@@ -2,7 +2,7 @@
 
 namespace ByBItBots.Results
 {
-    public class PlacedOrderResult
+    public class OrderResult
     {
         [JsonProperty("orderId")]
         public string OrderId { get; set; }

@@ -6,6 +6,7 @@ using ByBItBots.DTOs.Menus;
 using ByBItBots.Enums;
 using ByBItBots.Helpers.Interfaces;
 using ByBItBots.Services.Interfaces;
+using static ByBItBots.Constants.InterfaceCommunicationMessages;
 
 namespace ByBItBots.Helpers.Implementations
 {
@@ -54,7 +55,7 @@ namespace ByBItBots.Helpers.Implementations
                 if (!isOptionVlid)
                 {
                     Console.Clear();
-                    _printerService.PrintMessage("Please press one of the specified keys");
+                    _printerService.PrintMessage(PRESS_SPECIFIED_BUTTON);
                     continue;
                 }
 
@@ -63,7 +64,7 @@ namespace ByBItBots.Helpers.Implementations
                 if (!canParse)
                 {
                     Console.Clear();
-                    _printerService.PrintMessage("Please press one of the specified keys");
+                    _printerService.PrintMessage(PRESS_SPECIFIED_BUTTON);
                     continue;
                 }
 
@@ -85,7 +86,7 @@ namespace ByBItBots.Helpers.Implementations
 
                         if (config.NetURL == ConfigConstants.TestNetURL)
                         {
-                            _printerService.PrintMessage("This service is currently unavailable on Testnet");
+                            _printerService.PrintMessage(SERVICE_UNAVAILABLE);
                             break;
                         }
 
@@ -102,7 +103,7 @@ namespace ByBItBots.Helpers.Implementations
                         break;
                     default:
                         Console.Clear();
-                        _printerService.PrintMessage("Please press one of the specified keys");
+                        _printerService.PrintMessage(PRESS_SPECIFIED_BUTTON);
                         continue;
                 }
             }
@@ -113,27 +114,28 @@ namespace ByBItBots.Helpers.Implementations
         private async Task ExecuteFunction(MainMenuOptions menuOption, Func<Task> function)
         {
             Console.Clear();
-            _printerService.PrintMessage($"[{menuOption.ToString().Replace("_", " ")} SELECTED]");
+            _printerService.PrintMessage(string.Format(OPTION_SELECTED, menuOption.ToString().Replace("_", " ")));
             await function.Invoke();
         }
 
         private async Task ExecuteGetOpenOrdersAsync()
         {
-            _printerService.PrintMessage("Enter a coin to get open trades (Example: BTCUSDT), if you want to see all open trades press enter: ");
+            _printerService.PrintMessage(ENTER_COIN_OPEN_TRADES);
 
-            var coin = Console.ReadLine();
+            var coin = await EnterCoinAsync();
+
             var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin);
 
             if (openOrdersResult.Result.List.Count == 0)
             {
-                _printerService.PrintMessage("No open orders");
+                _printerService.PrintMessage(NO_OPEN_ORDERS);
             }
             else
             {
                 for (int i = 0; i < openOrdersResult.Result.List.Count; i++)
                 {
                     var order = openOrdersResult.Result.List[i];
-                    _printerService.PrintMessage($"{i + 1}. {order}");
+                    _printerService.PrintMessage(string.Format(ORDER_FORMAT,i + 1, order));
                 }
             }
         }
@@ -141,7 +143,7 @@ namespace ByBItBots.Helpers.Implementations
         private async Task ExecuteGetBybitServerTime()
         {
             var bybitTime = await _bybitTimeService.GetCurrentBybitTimeAsync();
-            _printerService.PrintMessage($"Server time: {bybitTime}");
+            _printerService.PrintMessage(string.Format(BYBIT_TIME, bybitTime));
         }
 
         private async Task ExecuteGetCoinsForFundingTradingAsync()
@@ -169,51 +171,51 @@ namespace ByBItBots.Helpers.Implementations
 
         private async Task ExecuteFarmSpotVolume()
         {
-            var coin = await EnterCoin();
+            var coin = await EnterCoinAsync();
 
-            _printerService.PrintMessage("Enter your capital (Examples: 100, 200.25):");
-            decimal capital = EnterValue<decimal>("Enter valid capital > 0", "Capital set");
-            _printerService.PrintMessage($"Capital to trade with: {capital}" + Environment.NewLine);
+            _printerService.PrintMessage(ENTER_CAPITAL);
+            decimal capital = EnterValue<decimal>(ENTER_VALID_CAPITAL, CAPITAL_SET);
+            _printerService.PrintMessage(string.Format(CAPITAL_TO_TRADE, capital) + Environment.NewLine);
 
-            _printerService.PrintMessage("Enter required volume to farm (Examples: 1000, 1000.25):");
-            decimal requiredVolume = EnterValue<decimal>("Enter valid volume to farm (Examples: 1000, 1000.25):", "Volume set");
-            _printerService.PrintMessage($"Required volume: {requiredVolume}" + Environment.NewLine);
+            _printerService.PrintMessage(ENTER_VOLUME);
+            decimal requiredVolume = EnterValue<decimal>(ENTER_VALID_VOLUME, VOLUME_SET);
+            _printerService.PrintMessage(string.Format(VOLUME_TO_TRADE, requiredVolume) + Environment.NewLine);
 
-            _printerService.PrintMessage("Enter interval in seconds to wait between requests(Examples: 1, 5):");
-            int requestInterval = EnterValue<int>("Enter valid interval (Examples: 1, 5):", "Interval set");
-            _printerService.PrintMessage($"Interval to wait: {requestInterval} seconds" + Environment.NewLine);
+            _printerService.PrintMessage(ENTER_INTERVAL);
+            int requestInterval = EnterValue<int>(ENTER_VALID_INTERVAL, INTERVAL_SET);
+            _printerService.PrintMessage(string.Format(INTERVAL_TO_WAIT, requestInterval) + Environment.NewLine);
 
-            _printerService.PrintMessage("Enter max price percent difference between orders. (Examples 0.1, 1):");
-            _printerService.PrintMessage("INFO: This will determine what % of your capital you lose on bad trades");
-            _printerService.PrintMessage("INFO: The lower max price percent difference you set, the longer it will take to executes trades");
+            _printerService.PrintMessage(ENTER_MAX_PRICE_DIFF);
+            _printerService.PrintMessage(CAPITAL_LOSE_INFO);
+            _printerService.PrintMessage(LONGER_TIME_INFO);
 
-            decimal maxPricePercentDiff = EnterValue<decimal>("Enter valid price percent difference (Examples: 0.1, 1):", "Percent difference set");
-            _printerService.PrintMessage($"Max price percent difference: {maxPricePercentDiff}%" + Environment.NewLine);
+            decimal maxPricePercentDiff = EnterValue<decimal>(ENTER_VALID_DIFF, DIFF_SET);
+            _printerService.PrintMessage(string.Format(MAX_DIFF_PERCENT, maxPricePercentDiff) + Environment.NewLine);
             maxPricePercentDiff /= 100;
 
-            _printerService.PrintMessage("Enter how many minutes are you willing to go without a trade (Examples: 0, 5):");
-            _printerService.PrintMessage("INFO: higher the minutes, the lower your chances are of getting a bad trade");
+            _printerService.PrintMessage(ENTER_MINUTES);
+            _printerService.PrintMessage(BAD_TRADES_INFO);
 
-            int minutesWithoutTrade = EnterValue<int>("Enter valid minutes to go without a trade (Examples: 0, 5):", "Minutes set", true);
-            _printerService.PrintMessage($"Minutes without trade: {minutesWithoutTrade} minutes" + Environment.NewLine);
+            int minutesWithoutTrade = EnterValue<int>(ENTER_VALID_MINUTES, MINUTES_SET, true);
+            _printerService.PrintMessage(string.Format(MINUTES_TO_WAIT, minutesWithoutTrade) + Environment.NewLine);
 
             Console.Clear();
-            _printerService.PrintMessage("Farming starting...");
+            _printerService.PrintMessage(START_FARMING);
 
             await _spotTradingService.FarmSpotVolumeAsync(coin, capital, requiredVolume, requestInterval, maxPricePercentDiff, minutesWithoutTrade);
         }
 
         private async Task ExecuteBuySpotCoinFirst()
         {
-            string coin = await EnterCoin();
+            string coin = await EnterCoinAsync();
 
-            _printerService.PrintMessage("Enter your capital (Examples: 100, 200.25):");
-            decimal capital = EnterValue<decimal>("Enter valid capital > 0", "Capital set");
-            _printerService.PrintMessage($"Capital to trade with: {capital}" + Environment.NewLine);
+            _printerService.PrintMessage(ENTER_CAPITAL);
+            decimal capital = EnterValue<decimal>(ENTER_VALID_CAPITAL, CAPITAL_SET);
+            _printerService.PrintMessage(string.Format(CAPITAL_TO_TRADE, capital) + Environment.NewLine);
 
-            _printerService.PrintMessage("Choose to buy or sell the coin:");
-            _printerService.PrintMessage("[1] Buy");
-            _printerService.PrintMessage("[2] Sell");
+            _printerService.PrintMessage(CHOOSE_SIDE);
+            _printerService.PrintMessage(string.Format(BUY_SIDE, 1));
+            _printerService.PrintMessage(string.Format(SELL_SIDE, 2));
             Side side;
             bool choiceValid = false;
 
@@ -233,20 +235,20 @@ namespace ByBItBots.Helpers.Implementations
                 }
                 else
                 {
-                    _printerService.PrintMessage("Press one of the specified buttons");
+                    _printerService.PrintMessage(PRESS_SPECIFIED_BUTTON);
                 }
             }
 
-            _printerService.PrintMessage($"Trading side: {side}" + Environment.NewLine);
-            _printerService.PrintMessage($"Opening a trade...");
+            _printerService.PrintMessage(string.Format(TRADING_SIDE, side) + Environment.NewLine);
+            _printerService.PrintMessage(OPENING_TRADE);
 
             await _spotTradingService.BuySellSpotCoinFirstAsync(coin, capital, side);
         }
 
-        private async Task<string> EnterCoin()
+        private async Task<string> EnterCoinAsync()
         {
-            _printerService.PrintMessage("Enter coin for farming (Example: BTCUSDT):");
-            string coin = Console.ReadLine();
+            _printerService.PrintMessage(ENTER_COIN);
+            string coin = Console.ReadLine() + "USDT";
 
             bool isCoinValid = false;
 
@@ -260,8 +262,8 @@ namespace ByBItBots.Helpers.Implementations
                 }
                 catch (Exception)
                 {
-                    _printerService.PrintMessage("This coin does not exist. Enter new coin (Example: BTCUSDT):");
-                    coin = Console.ReadLine();
+                    _printerService.PrintMessage(ENTER_VALID_COIN);
+                    coin = Console.ReadLine() + "USDT";
                 }
             }
 
@@ -297,10 +299,10 @@ namespace ByBItBots.Helpers.Implementations
 
         private async Task GetMarketCoins(Action<List<CoinShortInfo>> printAction, Func<string, Task<List<CoinShortInfo>>> getCoinsFunc)
         {
-            _printerService.PrintMessage("Enter a coin to get information (Example: BTCUSDT), if you want to see all coins just press Enter (This option is currently unavailable on TestNet):");
+            _printerService.PrintMessage(ENTER_COIN_INFORMATION);
 
             bool isCoinValid = false;
-            string coin = Console.ReadLine();
+            string coin = Console.ReadLine() + "USDT";
 
             while (!isCoinValid)
             {
@@ -312,8 +314,8 @@ namespace ByBItBots.Helpers.Implementations
                 }
                 catch (Exception)
                 {
-                    _printerService.PrintMessage("This coin does not exist. Enter new coin (Example: BTCUSDT):");
-                    coin = Console.ReadLine();
+                    _printerService.PrintMessage(ENTER_VALID_COIN);
+                    coin = Console.ReadLine() + "USDT";
                 }
             }
         }

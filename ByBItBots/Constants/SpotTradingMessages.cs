@@ -1,12 +1,7 @@
 ﻿namespace ByBItBots.Constants
 {
-    public static class InfoMessages
+    public static class SpotTradingMessages
     {
-        public const string USING_TEST_NET = "[USING TESTNET]";
-        public const string USING_MAIN_NET = "[USING MAINNET]";
-
-        public const string PRESS_SPECIFIED_BUTTON = "Please press one of the specified buttons";
-
         public const string GOT_OPEN_ORDERS = "Got open orders";
         public const string OPENING_ORDER = "No orders found, opening an order!";
         public const string PLACED_ORDER_RESULT = "Placed order result: {0}";
@@ -36,8 +31,6 @@
 
         public const string SUCCESSFULY_ACCUMULATED_VOLUME = "Successfuly accumulated {0} volume for {1}!";
         public const string SUCCESSFULY_TRADED_COIN = "Successfuly traded {0} {1}";
-
-        public const string BYBIT_TIME = "Bybit time: {0}";
 
         public const string COIN_NOT_LISTED = "Coin not listed yet!";
 

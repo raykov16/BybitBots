@@ -5,7 +5,6 @@ using ByBItBots.Constants;
 using ByBItBots.Results;
 using ByBItBots.Services.Interfaces;
 using Newtonsoft.Json;
-using static ByBItBots.Constants.InfoMessages;
 
 namespace ByBItBots.Services.Implementations
 {
@@ -65,7 +64,7 @@ namespace ByBItBots.Services.Implementations
                 var mostProfitableCoin = fundingCoins[0];
 
                 var bybitTime = await _timeService.GetCurrentBybitTimeAsync();
-                _printService.PrintMessage(string.Format(BYBIT_TIME, bybitTime));
+                _printService.PrintMessage(string.Format(InterfaceCommunicationMessages.BYBIT_TIME, bybitTime));
 
                 if (fundingCoins.Count != 0)
                 {
