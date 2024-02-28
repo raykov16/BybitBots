@@ -26,7 +26,7 @@ if (userChoice == BybitNets.TESTNET)
 else
 {
     config = new MainnetConfig();
-    printer.PrintMessage(InterfaceCommunicationMessages.USING_TEST_NET);
+    printer.PrintMessage(InterfaceCommunicationMessages.USING_MAIN_NET);
 }
 
 

@@ -146,6 +146,7 @@ namespace ByBItBots.Services.Implementations
                         }
                         else
                         {
+                            quantityToBuy = Math.Round(quantityToBuy, 2);
                             quantity = quantityToBuy.ToString();
                         }
 
