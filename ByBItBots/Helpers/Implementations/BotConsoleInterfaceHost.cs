@@ -122,7 +122,7 @@ namespace ByBItBots.Helpers.Implementations
         {
             _printerService.PrintMessage(ENTER_COIN_OPEN_TRADES);
 
-            var coin = await EnterCoinAsync();
+            var coin = await EnterCoinAsync(true, false);
 
             var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin);
 
@@ -245,10 +245,13 @@ namespace ByBItBots.Helpers.Implementations
             await _spotTradingService.BuySellSpotCoinFirstAsync(coin, capital, side);
         }
 
-        private async Task<string> EnterCoinAsync()
+        private async Task<string> EnterCoinAsync(bool allowEmpty = false, bool printCoin = true)
         {
             _printerService.PrintMessage(ENTER_COIN);
-            string coin = Console.ReadLine() + "USDT";
+            string coin = Console.ReadLine();
+
+            if (!allowEmpty || coin != string.Empty)
+                coin += "USDT";
 
             bool isCoinValid = false;
 
@@ -257,13 +260,19 @@ namespace ByBItBots.Helpers.Implementations
                 try
                 {
                     var coinsInfo = await _spotTradingService.GetSpotCoinsAsync(coin);
+
+                    if(printCoin)
                     _printerService.PrintCoinInfo(coinsInfo, Category.SPOT);
+
                     isCoinValid = true;
                 }
                 catch (Exception)
                 {
                     _printerService.PrintMessage(ENTER_VALID_COIN);
-                    coin = Console.ReadLine() + "USDT";
+                    coin = Console.ReadLine();
+
+                    if (!allowEmpty)
+                        coin += "USDT";
                 }
             }
 
@@ -302,7 +311,10 @@ namespace ByBItBots.Helpers.Implementations
             _printerService.PrintMessage(ENTER_COIN_INFORMATION);
 
             bool isCoinValid = false;
-            string coin = Console.ReadLine() + "USDT";
+            string coin = Console.ReadLine();
+
+            if (coin != string.Empty)
+                coin += "USDT";
 
             while (!isCoinValid)
             {
@@ -315,7 +327,10 @@ namespace ByBItBots.Helpers.Implementations
                 catch (Exception)
                 {
                     _printerService.PrintMessage(ENTER_VALID_COIN);
-                    coin = Console.ReadLine() + "USDT";
+                    coin = Console.ReadLine();
+
+                    if (coin != string.Empty)
+                        coin += "USDT";
                 }
             }
         }
