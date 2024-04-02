@@ -1,5 +1,6 @@
 ﻿using bybit.net.api.ApiServiceImp;
 using bybit.net.api.Models;
+using bybit.net.api.Models.Trade;
 using ByBitBots.DTOs;
 using ByBItBots.Constants;
 using ByBItBots.Results;
@@ -8,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace ByBItBots.Services.Implementations
 {
-    public class FundingTradingService : IFundingTradingService
+    public class DerivativesTradingService : IDerivativesTradingService
     {
         private readonly BybitMarketDataService _marketService;
         private readonly IOrderService _orderService;
@@ -16,7 +17,7 @@ namespace ByBItBots.Services.Implementations
         private readonly IBybitTimeService _timeService;
         private readonly IPrinterService _printService;
 
-        public FundingTradingService(BybitMarketDataService marketService
+        public DerivativesTradingService(BybitMarketDataService marketService
             , IOrderService orderService
             , ICoinDataService coinDataService
             , IBybitTimeService timeService
@@ -27,6 +28,84 @@ namespace ByBItBots.Services.Implementations
             _coinDataService = coinDataService;
             _timeService = timeService;
             _printService = printerService;
+        }
+
+        public async Task ScalpVolatileMovements(string coin, decimal capitalPercentage)
+        {
+            Side side = default;
+            var secondsToWait = 30;
+            string quantity = string.Empty;
+            decimal currentPrice = default;
+            decimal previousPrice = default;
+            decimal percentWins = 0;
+            decimal percentLoses = 0;
+            bool profitableTrading = true;
+
+            while (profitableTrading) 
+            {
+                previousPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
+                Thread.Sleep(secondsToWait * 1000);
+                currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
+
+                var percentageDiff = CalculatePercentageDifference(previousPrice, currentPrice);
+
+                if (percentageDiff < 0.012m)
+                {
+                    continue;
+                }
+
+                side = currentPrice > previousPrice ? Side.BUY : Side.SELL;
+                var placeOrderResult = await _orderService.PlaceOrderAsync(Category.LINEAR, coin, side, OrderType.MARKET, quantity, currentPrice.ToString());
+
+                //while(tradeIsOpen)
+                //{
+                //  if(UnrealisedPL >= 25%)
+                //  {
+                //   position.Stoploss = entry;
+                //  }
+                //
+                //  if (UnrealisedPL >= 50 %)
+                //  {
+                //   position.Stoploss = 25%;
+                //  }     
+                //  if (UnrealisedPL >= 75%)
+                //  {
+                //   position.Stoploss = 50%;
+                //   position.TakeProfit = 100%;
+                //  }
+                //  if (UnrealisedPL >= 90%)
+                //  {
+                //   position.Stoploss = 80%;
+                //   position.TakeProfit = 110%;
+                //  }
+                //  if (UnrealisedPL >= 100%)
+                //  {
+                //   position.Stoploss = 90%;
+                //   position.TakeProfit = 120%;
+                //  }
+                // var previousPL = unrealisedPL
+                //  while(tradeIsOpen)
+                // {
+                // var currentPL = undrealisedPL
+                //   if(currentPL > s 10% ot previousPL)
+                //   {
+                //   position.Stoploss += 15%
+                //   position.TP += 10%
+                //   }
+                // }
+                //
+                // if(closedTrade.OrderPrice < MarketPrice) imame stoploss
+                //  {
+                //    percentLoses += 100%;
+                //  }
+                // else
+                // {
+                //   percentWins += percentWon;
+                // }
+                // if(percentLosses >= 150% && percentLosses > percentWins)
+                // profitableTrading = false;
+                //}
+            }
         }
 
         public async Task<List<CoinShortInfo>> GetCoinsForFundingTradingAsync()
@@ -117,6 +196,16 @@ namespace ByBItBots.Services.Implementations
                    Price = decimal.Parse(c.LastPrice)
                })
                .ToList();
+        }
+
+        private decimal CalculatePercentageDifference(decimal num1, decimal num2)
+        {
+            decimal absoluteDifference = Math.Abs(num1 - num2);
+            decimal average = (num1 + num2) / 2;
+
+            decimal percentageDifference = (absoluteDifference / average) * 100;
+
+            return Math.Round(percentageDifference, 3);
         }
     }
 }

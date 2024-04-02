@@ -14,13 +14,13 @@ namespace ByBItBots.Helpers.Implementations
     {
         private readonly IPrinterService _printerService;
         private readonly ISpotTradingService _spotTradingService;
-        private readonly IFundingTradingService _fundingTradingService;
+        private readonly IDerivativesTradingService _fundingTradingService;
         private readonly IBybitTimeService _bybitTimeService;
         private readonly IOrderService _orderService;
 
         public BotConsoleInterfaceHost(IPrinterService printerService
             , ISpotTradingService spotTradingService
-            , IFundingTradingService fundingTradingService
+            , IDerivativesTradingService fundingTradingService
             , IBybitTimeService bybitTimeService
             , IOrderService orderService)
         {

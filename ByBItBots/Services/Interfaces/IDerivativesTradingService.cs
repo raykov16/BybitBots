@@ -3,7 +3,7 @@ using ByBitBots.DTOs;
 
 namespace ByBItBots.Services.Interfaces
 {
-    public interface IFundingTradingService
+    public interface IDerivativesTradingService
     {
         /// <summary>
         /// Gets all derivatives coins whose funding can be used to make profits.
