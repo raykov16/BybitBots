@@ -132,6 +132,20 @@ namespace ByBItBots.Services.Implementations
             return result;
         }
 
+        public async Task<ApiResponseResult<EmptyResult>> PlaceOrderAsync(Category category, string coinSymbol, Side side, OrderType orderType,
+                                                                         string quantity, string currentPrice, string takeProfit, string stopLoss)
+        {
+            var placeOrder = await _tradeService.PlaceOrder(category, coinSymbol, side, orderType, quantity, currentPrice, takeProfit: takeProfit, stopLoss: stopLoss);
+            var result = JsonConvert.DeserializeObject<ApiResponseResult<EmptyResult>>(placeOrder);
+
+            if (result == null)
+            {
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_OPEN_ORDER);
+            }
+
+            return result;
+        }
+
         public async Task<ApiResponseResult<OrderResult>> AmendOrderAsync(Category category, string symbol, string orderId, string price)
         {
             var amendOrder = await _tradeService.AmendOrder(category, symbol, orderId: orderId, price: price);

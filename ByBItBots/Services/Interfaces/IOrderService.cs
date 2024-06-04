@@ -18,6 +18,8 @@ namespace ByBItBots.Services.Interfaces
 
         Task<PreviousOrderInfo> GetLastOrderInfoAsync(string symbol);
         Task<ApiResponseResult<EmptyResult>> PlaceOrderAsync(Category category, string coinSymbol, Side side, OrderType orderType, string quantity, string currentPrice);
+        Task<ApiResponseResult<EmptyResult>> PlaceOrderAsync(Category category, string coinSymbol, Side side, OrderType orderType, string quantity,
+        string currentPrice, string takeProfit, string stopLoss);
         Task<ApiResponseResult<OrderResult>> AmendOrderAsync(Category category, string symbol, string orderId, string price);
         Task<ApiResponseResult<OrderResult>> AmendOrderAsync(Category category, string symbol, string orderId, string quantity, string price);
     }

@@ -6,6 +6,7 @@ using ByBItBots.Constants;
 using ByBItBots.Results;
 using ByBItBots.Services.Interfaces;
 using Newtonsoft.Json;
+using System.Drawing;
 
 namespace ByBItBots.Services.Implementations
 {
@@ -30,7 +31,8 @@ namespace ByBItBots.Services.Implementations
             _printService = printerService;
         }
 
-        public async Task ScalpVolatileMovements(string coin, decimal capitalPercentage)
+        #region Scalp Volatile Movements
+        public async Task ScalpVolatileMovementsOld(string coin, decimal capitalPercentage)
         {
             Side side = default;
             var secondsToWait = 30;
@@ -41,7 +43,7 @@ namespace ByBItBots.Services.Implementations
             decimal percentLoses = 0;
             bool profitableTrading = true;
 
-            while (profitableTrading) 
+            while (profitableTrading)
             {
                 previousPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
                 Thread.Sleep(secondsToWait * 1000);
@@ -107,6 +109,77 @@ namespace ByBItBots.Services.Implementations
                 //}
             }
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="coin">The symbol of the coin - BTCUSDT</param>
+        /// <param name="capital">Your capital</param>
+        /// <param name="consideredMoveStartPercentage">The rise of price in percents that we consider is a start of a move. For example for a 6% move we consider 3% as the start</param>
+        /// <param name="wholeMovePercentage">The percent of the whole move - start + TP</param>
+        /// <param name="secondsBetweenUpdates">seconds bettwen each check for new price</param>
+        /// <param name="leverage">The leverage for the trade</param>
+        /// <param name="presetBottom">Set this parameter only if you have already chosen a bottom by looking at the chart</param>
+        /// <returns></returns>
+        public async Task ScalpVolatileLongsAsync(string coin, decimal capital, decimal consideredMoveStartPercentage, decimal wholeMovePercentage, 
+            int secondsBetweenUpdates, int leverage, decimal presetBottom = -1)
+        {
+            decimal bottomPrice;
+            var currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
+
+            if (presetBottom != -1)
+                bottomPrice = presetBottom;
+            else
+                bottomPrice = currentPrice;
+
+            consideredMoveStartPercentage /= 100;
+            wholeMovePercentage /= 100;
+            decimal targetPriceForMoveStart = bottomPrice + (bottomPrice * consideredMoveStartPercentage); // bottom + ? = consideredMoveStartPercentage pokachvane
+
+            bool tradePlaced = false;
+            bool hasMoveStarted = false;
+
+            while (!tradePlaced)
+            {
+                currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
+
+                if (currentPrice < bottomPrice) // new bottom has been found
+                {
+                    bottomPrice = currentPrice;
+                    targetPriceForMoveStart = bottomPrice + (bottomPrice * consideredMoveStartPercentage); // recalculate targeted price for move start
+                }
+                else if (currentPrice >= targetPriceForMoveStart)
+                    hasMoveStarted = true;
+
+                if (!hasMoveStarted)
+                {
+                    Thread.Sleep(1000 * secondsBetweenUpdates);
+                    continue;
+                }
+
+                // calculate TP and SL
+                decimal takeProfit = bottomPrice + (bottomPrice * wholeMovePercentage); 
+                decimal stopLoss = bottomPrice; // if we get stopped often at retest change to bottom - 1%;
+                decimal quantityToBuy = capital / currentPrice;
+                string orderQuantity = quantityToBuy < 1 ? quantityToBuy.ToString("f4") : quantityToBuy.ToString(); 
+
+                var placeOrderResult = await _orderService.PlaceOrderAsync(Category.LINEAR, coin, Side.BUY, OrderType.MARKET, orderQuantity, 
+                    currentPrice.ToString(), takeProfit.ToString(), stopLoss.ToString());
+
+                if (placeOrderResult.RetMsg == "OK")
+                    tradePlaced = true;
+                else
+                    Console.WriteLine($"PLACE ORDER ERROR: {placeOrderResult.RetMsg}");
+            }
+
+            Console.WriteLine("Trade placed successfuly");
+            var openOrder = await _orderService.GetOpenOrdersAsync(coin);
+            Console.WriteLine($"Order price: {openOrder.Result.List[0].Price}");
+            Console.WriteLine($"Take profit price: {openOrder.Result.List[0].TakeProfit}"); 
+            Console.WriteLine($"Stop loss price: {openOrder.Result.List[0].StopLoss}");
+        }
+
+        #endregion
 
         public async Task<List<CoinShortInfo>> GetCoinsForFundingTradingAsync()
         {
