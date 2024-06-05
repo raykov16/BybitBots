@@ -49,7 +49,7 @@ namespace ByBItBots.Services.Implementations
             while (tradedVolume < requiredVolume)
             {
                 // check for open orders
-                var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin);
+                var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin, Category.SPOT);
                 _printerService.PrintMessage(GOT_OPEN_ORDERS);
 
                 if (openOrdersResult.RetMsg != "OK")
@@ -265,7 +265,7 @@ namespace ByBItBots.Services.Implementations
                 _printerService.PrintMessage(string.Format(PLACED_ORDER_RESULT, placeOrderResult.RetMsg));
             }
 
-            var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin.Symbol);
+            var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin.Symbol, Category.SPOT);
 
             while (openOrdersResult.Result.List.Count > 0)
             {
@@ -288,7 +288,7 @@ namespace ByBItBots.Services.Implementations
 
                 _printerService.PrintMessage(string.Format(AMEND_ORDER_RESULT, amendOrderResult.RetMsg));
 
-                openOrdersResult = await _orderService.GetOpenOrdersAsync(coin.Symbol);
+                openOrdersResult = await _orderService.GetOpenOrdersAsync(coin.Symbol, Category.SPOT);
             }
 
             _printerService.PrintMessage(string.Format(SUCCESSFULY_TRADED_COIN, quantity, coin.Symbol));

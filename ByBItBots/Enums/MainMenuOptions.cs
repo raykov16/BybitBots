@@ -9,6 +9,7 @@
         GET_COINS_FOR_FUNDING_TRADING = 5,
         GET_OPEN_ORDERS = 6,
         GET_BYBIT_SERVER_TIME = 7,
-        EXIT = 8
+        SCALP_VOLATILE_MOVEMENTS = 8,
+        EXIT = 9
     }
 }

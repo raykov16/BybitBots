@@ -81,9 +81,9 @@ namespace ByBItBots.Services.Implementations
             return (OpenRequests: openRequests, CloseRequests: closeRequests);
         }
 
-        public async Task<ApiResponseResult<ResultOpenOrders>> GetOpenOrdersAsync(string symbol)
+        public async Task<ApiResponseResult<ResultOpenOrders>> GetOpenOrdersAsync(string symbol, Category category)
         {
-            var openOrders = await _tradeService.GetOpenOrders(Category.SPOT, symbol: symbol);
+            var openOrders = await _tradeService.GetOpenOrders(category, symbol: symbol);
             var openOrdersResult = JsonConvert.DeserializeObject<ApiResponseResult<ResultOpenOrders>>(openOrders);
 
             if (openOrdersResult == null)

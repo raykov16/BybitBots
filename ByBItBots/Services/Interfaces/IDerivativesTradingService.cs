@@ -19,5 +19,8 @@ namespace ByBItBots.Services.Interfaces
         /// <param name="symbol">The coin whose information is required. Example - BTCUSDT</param>
         /// <returns></returns>
         Task<List<CoinShortInfo>> GetDerivativesCoinsAsync(string symbol = null);
+
+        Task ScalpVolatileLongsAsync(string coin, decimal capital, decimal consideredMoveStartPercentage, decimal wholeMovePercentage,
+            int secondsBetweenUpdates, int leverage, decimal presetBottom = -1);
     }
 }

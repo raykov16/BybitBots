@@ -21,6 +21,7 @@ namespace ByBItBots.DTOs.Menus
                 MainMenuOptions.GET_COINS_FOR_FUNDING_TRADING.ToString().Replace("_", " "),
                 MainMenuOptions.GET_OPEN_ORDERS.ToString().Replace("_", " "),
                 MainMenuOptions.GET_BYBIT_SERVER_TIME.ToString().Replace("_", " "),
+                MainMenuOptions.SCALP_VOLATILE_MOVEMENTS.ToString().Replace("_", " "),
                 MainMenuOptions.EXIT.ToString().Replace("_", " ")
             };
         }

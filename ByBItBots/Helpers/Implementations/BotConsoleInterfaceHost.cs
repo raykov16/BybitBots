@@ -14,7 +14,7 @@ namespace ByBItBots.Helpers.Implementations
     {
         private readonly IPrinterService _printerService;
         private readonly ISpotTradingService _spotTradingService;
-        private readonly IDerivativesTradingService _fundingTradingService;
+        private readonly IDerivativesTradingService _derivativesTradingService;
         private readonly IBybitTimeService _bybitTimeService;
         private readonly IOrderService _orderService;
 
@@ -26,7 +26,7 @@ namespace ByBItBots.Helpers.Implementations
         {
             _printerService = printerService;
             _spotTradingService = spotTradingService;
-            _fundingTradingService = fundingTradingService;
+            _derivativesTradingService = fundingTradingService;
             _bybitTimeService = bybitTimeService;
             _orderService = orderService;
         }
@@ -98,6 +98,9 @@ namespace ByBItBots.Helpers.Implementations
                     case MainMenuOptions.GET_BYBIT_SERVER_TIME:
                         await ExecuteFunction(menuOption, () => ExecuteGetBybitServerTime());
                         break;
+                    case MainMenuOptions.SCALP_VOLATILE_MOVEMENTS:
+                        await ExecuteFunction(menuOption, () => ExecuteScalpVolatileMovements());
+                        break;
                     case MainMenuOptions.EXIT:
                         shouldExit = true;
                         break;
@@ -110,6 +113,8 @@ namespace ByBItBots.Helpers.Implementations
 
             StopBot();
         }
+
+      
 
         private async Task ExecuteFunction(MainMenuOptions menuOption, Func<Task> function)
         {
@@ -124,7 +129,7 @@ namespace ByBItBots.Helpers.Implementations
 
             var coin = await EnterCoinAsync(true, false);
 
-            var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin);
+            var openOrdersResult = await _orderService.GetOpenOrdersAsync(coin, Category.SPOT);
 
             if (openOrdersResult.Result.List.Count == 0)
             {
@@ -148,7 +153,7 @@ namespace ByBItBots.Helpers.Implementations
 
         private async Task ExecuteGetCoinsForFundingTradingAsync()
         {
-            var coins = await _fundingTradingService.GetCoinsForFundingTradingAsync();
+            var coins = await _derivativesTradingService.GetCoinsForFundingTradingAsync();
 
             _printerService.PrintCoinInfo(coins, Category.LINEAR);
         }
@@ -164,7 +169,7 @@ namespace ByBItBots.Helpers.Implementations
         private async Task ExecuteGetDerivativesCoinsAsync()
         {
             var printAction = (List<CoinShortInfo> coins) => _printerService.PrintCoinInfo(coins, Category.LINEAR);
-            var getCoinsFunc = (string coin) => _fundingTradingService.GetDerivativesCoinsAsync(coin);
+            var getCoinsFunc = (string coin) => _derivativesTradingService.GetDerivativesCoinsAsync(coin);
 
             await GetMarketCoins(printAction, getCoinsFunc);
         }
@@ -333,6 +338,26 @@ namespace ByBItBots.Helpers.Implementations
                         coin += "USDT";
                 }
             }
+        }
+
+        private async Task ExecuteScalpVolatileMovements()
+        {
+            Console.WriteLine("Enter coin");
+            string coin = Console.ReadLine();
+            Console.WriteLine("Enter capital");
+            decimal capital = decimal.Parse(Console.ReadLine());
+            Console.WriteLine("Enter move start %");
+            decimal moveStartPercent = decimal.Parse(Console.ReadLine());
+            Console.WriteLine("Enter whole move %");
+            decimal wholeMovePercent = decimal.Parse(Console.ReadLine());
+            Console.WriteLine("Enter seconds between updates");
+            int secontsBetweenUpdate = int.Parse(Console.ReadLine());
+            Console.WriteLine("Enter trade leverage");
+            int leverage = int.Parse(Console.ReadLine());
+            Console.WriteLine("Enter preset bottom");
+            decimal presetBottom = decimal.Parse(Console.ReadLine());
+
+            await _derivativesTradingService.ScalpVolatileLongsAsync(coin, capital, moveStartPercent, wholeMovePercent, secontsBetweenUpdate, leverage, presetBottom);
         }
         #endregion Private methods
     }

@@ -124,6 +124,10 @@ namespace ByBItBots.Services.Implementations
         public async Task ScalpVolatileLongsAsync(string coin, decimal capital, decimal consideredMoveStartPercentage, decimal wholeMovePercentage, 
             int secondsBetweenUpdates, int leverage, decimal presetBottom = -1)
         {
+            // sus 1000 dolara i 100 leverage vsushnost otvori poziciq s 10$ zashtoto 10 * 100 = 1000. Nie vsushnost iskame 1000 * 10 = 10000.
+            // Suotvetno izmeni capital *= leverage! vuzmojno da e bug ot testnet ne go probvai predi da potvurdish na mainnet che tova e istina
+            coin += "USDT";
+           
             decimal bottomPrice;
             var currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
 
@@ -139,6 +143,13 @@ namespace ByBItBots.Services.Implementations
             bool tradePlaced = false;
             bool hasMoveStarted = false;
 
+            Console.WriteLine("Pre loop information:");
+            Console.WriteLine($"Current Price: {currentPrice}");
+            Console.WriteLine($"First Bottom: {bottomPrice}");
+            Console.WriteLine($"Targeted price for move start: {targetPriceForMoveStart}");
+            Console.WriteLine("-------------------------------------------------------------\n");
+            Console.WriteLine("Pre trade information:");
+
             while (!tradePlaced)
             {
                 currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
@@ -147,6 +158,8 @@ namespace ByBItBots.Services.Implementations
                 {
                     bottomPrice = currentPrice;
                     targetPriceForMoveStart = bottomPrice + (bottomPrice * consideredMoveStartPercentage); // recalculate targeted price for move start
+                    Console.WriteLine($"New bottom set: {bottomPrice}");
+                    Console.WriteLine($"New Targeted price for move start: {targetPriceForMoveStart}");
                 }
                 else if (currentPrice >= targetPriceForMoveStart)
                     hasMoveStarted = true;
@@ -172,11 +185,16 @@ namespace ByBItBots.Services.Implementations
                     Console.WriteLine($"PLACE ORDER ERROR: {placeOrderResult.RetMsg}");
             }
 
+            Console.WriteLine("-------------------------------------------------------------\n");
+            Console.WriteLine("Move started information:");
             Console.WriteLine("Trade placed successfuly");
-            var openOrder = await _orderService.GetOpenOrdersAsync(coin);
-            Console.WriteLine($"Order price: {openOrder.Result.List[0].Price}");
-            Console.WriteLine($"Take profit price: {openOrder.Result.List[0].TakeProfit}"); 
-            Console.WriteLine($"Stop loss price: {openOrder.Result.List[0].StopLoss}");
+            var openOrder = await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR);
+            var stopLossOrder = openOrder.Result.List[0];
+            var takeProfitOrder = openOrder.Result.List[1];
+
+            Console.WriteLine($"Entry price: {takeProfitOrder.LastPriceOnCreated}");
+            Console.WriteLine($"Take profit price: {takeProfitOrder.TriggerPrice}");
+            Console.WriteLine($"Stop loss price: {stopLossOrder.TriggerPrice}");
         }
 
         #endregion

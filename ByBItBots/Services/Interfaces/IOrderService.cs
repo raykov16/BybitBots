@@ -14,7 +14,7 @@ namespace ByBItBots.Services.Interfaces
         /// </summary>
         /// <param name="symbol">The symbol of the coin. Example - BTCUSDT</param>
         /// <returns></returns>
-        Task<ApiResponseResult<ResultOpenOrders>> GetOpenOrdersAsync(string symbol);
+        Task<ApiResponseResult<ResultOpenOrders>> GetOpenOrdersAsync(string symbol, Category category);
 
         Task<PreviousOrderInfo> GetLastOrderInfoAsync(string symbol);
         Task<ApiResponseResult<EmptyResult>> PlaceOrderAsync(Category category, string coinSymbol, Side side, OrderType orderType, string quantity, string currentPrice);
