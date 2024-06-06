@@ -121,13 +121,14 @@ namespace ByBItBots.Services.Implementations
         /// <param name="leverage">The leverage for the trade</param>
         /// <param name="presetBottom">Set this parameter only if you have already chosen a bottom by looking at the chart</param>
         /// <returns></returns>
-        public async Task ScalpVolatileLongsAsync(string coin, decimal capital, decimal consideredMoveStartPercentage, decimal wholeMovePercentage, 
+        public async Task ScalpVolatileLongsAsync(string coin, decimal capital, decimal consideredMoveStartPercentage, decimal wholeMovePercentage,
             int secondsBetweenUpdates, int leverage, decimal presetBottom = -1)
         {
+            // TO DO
             // sus 1000 dolara i 100 leverage vsushnost otvori poziciq s 10$ zashtoto 10 * 100 = 1000. Nie vsushnost iskame 1000 * 10 = 10000.
             // Suotvetno izmeni capital *= leverage! vuzmojno da e bug ot testnet ne go probvai predi da potvurdish na mainnet che tova e istina
             coin += "USDT";
-           
+
             decimal bottomPrice;
             var currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
 
@@ -171,30 +172,39 @@ namespace ByBItBots.Services.Implementations
                 }
 
                 // calculate TP and SL
-                decimal takeProfit = bottomPrice + (bottomPrice * wholeMovePercentage); 
+                decimal takeProfit = bottomPrice + (bottomPrice * wholeMovePercentage);
                 decimal stopLoss = bottomPrice; // if we get stopped often at retest change to bottom - 1%;
-                decimal quantityToBuy = capital / currentPrice;
-                string orderQuantity = quantityToBuy < 1 ? quantityToBuy.ToString("f4") : quantityToBuy.ToString(); 
+                decimal quantityToBuy = capital * leverage / currentPrice;
+                string orderQuantity = quantityToBuy.ToString("f3");
 
-                var placeOrderResult = await _orderService.PlaceOrderAsync(Category.LINEAR, coin, Side.BUY, OrderType.MARKET, orderQuantity, 
+                var setLeverageResult = await _orderService.SetCoinLeverageAsync(coin, leverage);
+                Console.WriteLine($"Leverage message: {setLeverageResult}");
+
+                var placeOrderResult = await _orderService.PlaceOrderAsync(Category.LINEAR, coin, Side.BUY, OrderType.MARKET, orderQuantity,
                     currentPrice.ToString(), takeProfit.ToString(), stopLoss.ToString());
 
                 if (placeOrderResult.RetMsg == "OK")
+                {
                     tradePlaced = true;
+
+                    Console.WriteLine("-------------------------------------------------------------\n");
+                    Console.WriteLine("Move started information:");
+                    Console.WriteLine("Trade placed successfuly");
+                    var openOrder = await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR);
+                    var stopLossOrder = openOrder.Result.List[0];
+                    var takeProfitOrder = openOrder.Result.List[1];
+
+                    Console.WriteLine($"Entry price: {takeProfitOrder.LastPriceOnCreated}");
+                    Console.WriteLine($"Take profit price: {takeProfitOrder.TriggerPrice}");
+                    Console.WriteLine($"Stop loss price: {stopLossOrder.TriggerPrice}");
+                }
                 else
+                {
                     Console.WriteLine($"PLACE ORDER ERROR: {placeOrderResult.RetMsg}");
+                }
             }
 
-            Console.WriteLine("-------------------------------------------------------------\n");
-            Console.WriteLine("Move started information:");
-            Console.WriteLine("Trade placed successfuly");
-            var openOrder = await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR);
-            var stopLossOrder = openOrder.Result.List[0];
-            var takeProfitOrder = openOrder.Result.List[1];
 
-            Console.WriteLine($"Entry price: {takeProfitOrder.LastPriceOnCreated}");
-            Console.WriteLine($"Take profit price: {takeProfitOrder.TriggerPrice}");
-            Console.WriteLine($"Stop loss price: {stopLossOrder.TriggerPrice}");
         }
 
         #endregion

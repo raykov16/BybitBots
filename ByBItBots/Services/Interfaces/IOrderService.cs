@@ -22,5 +22,6 @@ namespace ByBItBots.Services.Interfaces
         string currentPrice, string takeProfit, string stopLoss);
         Task<ApiResponseResult<OrderResult>> AmendOrderAsync(Category category, string symbol, string orderId, string price);
         Task<ApiResponseResult<OrderResult>> AmendOrderAsync(Category category, string symbol, string orderId, string quantity, string price);
+        Task<string> SetCoinLeverageAsync(string coin, int leverage);
     }
 }

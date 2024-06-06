@@ -172,6 +172,14 @@ namespace ByBItBots.Services.Implementations
             return amendOrderResult;
         }
 
+        public async Task<string> SetCoinLeverageAsync(string coin, int leverage)
+        {
+            var leverageResponse = await _positionService.SetPositionLeverage(Category.LINEAR, coin, leverage.ToString(), leverage.ToString());
+            var result = JsonConvert.DeserializeObject<ApiResponseResult<EmptyResult>>(leverageResponse);
+
+            return result.RetMsg;
+        }
+
         private decimal CalculateTPSLPrice(decimal percentageLose, decimal leverage, decimal coinPrice, bool isTakeProfit)
         {
             decimal coinPercentPriceDrop = percentageLose / leverage / 100;
