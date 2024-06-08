@@ -122,7 +122,7 @@ namespace ByBItBots.Services.Implementations
         /// <param name="presetBottom">Set this parameter only if you have already chosen a bottom by looking at the chart</param>
         /// <returns></returns>
         public async Task ScalpVolatileLongsAsync(string coin, decimal capital, decimal consideredMoveStartPercentage, decimal wholeMovePercentage,
-            int secondsBetweenUpdates, int leverage, decimal presetBottom = -1)
+            int secondsBetweenUpdates, int leverage, int decimals, int multiple, decimal presetBottom = -1)
         {
             // TO DO
             // sus 1000 dolara i 100 leverage vsushnost otvori poziciq s 10$ zashtoto 10 * 100 = 1000. Nie vsushnost iskame 1000 * 10 = 10000.
@@ -175,7 +175,7 @@ namespace ByBItBots.Services.Implementations
                 decimal takeProfit = bottomPrice + (bottomPrice * wholeMovePercentage);
                 decimal stopLoss = bottomPrice; // if we get stopped often at retest change to bottom - 1%;
                 decimal quantityToBuy = capital * leverage / currentPrice;
-                string orderQuantity = quantityToBuy.ToString("f3");
+                string orderQuantity = FormatQuantity(quantityToBuy, decimals, multiple);
 
                 var setLeverageResult = await _orderService.SetCoinLeverageAsync(coin, leverage);
                 Console.WriteLine($"Leverage message: {setLeverageResult}");
@@ -200,7 +200,12 @@ namespace ByBItBots.Services.Implementations
                 }
                 else
                 {
+                    Console.WriteLine("-------------------------------------------------------------\n");
                     Console.WriteLine($"PLACE ORDER ERROR: {placeOrderResult.RetMsg}");
+                    Console.WriteLine($"Quantity: {orderQuantity}");
+                    Console.WriteLine($"Take profit: {takeProfit}");
+                    Console.WriteLine($"Stop loss: {stopLoss}");
+                    break;
                 }
             }
 
@@ -307,6 +312,36 @@ namespace ByBItBots.Services.Implementations
             decimal percentageDifference = (absoluteDifference / average) * 100;
 
             return Math.Round(percentageDifference, 3);
+        }
+
+        private string FormatQuantity(decimal calculatedQuantity, int decimals, int multiple)
+        {
+            string result = string.Empty;
+            calculatedQuantity = Math.Round(calculatedQuantity, decimals);
+            result = calculatedQuantity.ToString();
+
+            if (multiple == 10)
+            {
+                int roundResult = RoundToNearestTenth((int)calculatedQuantity);
+                result = roundResult.ToString();
+            }
+            else if (multiple == 100)
+            {
+                int roundResult = RoundToNearestHundred((int)calculatedQuantity);
+                result = roundResult.ToString();
+            }
+
+            return result;
+        }
+
+        private int RoundToNearestTenth(int number)
+        {
+            return (int)Math.Round(number / 10.0) * 10;
+        }
+
+        private int RoundToNearestHundred(int number)
+        {
+            return (int)Math.Round(number / 100.0) * 100;
         }
     }
 }

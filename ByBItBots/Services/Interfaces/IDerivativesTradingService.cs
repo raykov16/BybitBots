@@ -21,6 +21,6 @@ namespace ByBItBots.Services.Interfaces
         Task<List<CoinShortInfo>> GetDerivativesCoinsAsync(string symbol = null);
 
         Task ScalpVolatileLongsAsync(string coin, decimal capital, decimal consideredMoveStartPercentage, decimal wholeMovePercentage,
-            int secondsBetweenUpdates, int leverage, decimal presetBottom = -1);
+            int secondsBetweenUpdates, int leverage, int decimals, int multiple, decimal presetBottom = -1);
     }
 }
