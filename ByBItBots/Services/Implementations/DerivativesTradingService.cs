@@ -31,85 +31,6 @@ namespace ByBItBots.Services.Implementations
             _printService = printerService;
         }
 
-        #region Scalp Volatile Movements
-        public async Task ScalpVolatileMovementsOld(string coin, decimal capitalPercentage)
-        {
-            Side side = default;
-            var secondsToWait = 30;
-            string quantity = string.Empty;
-            decimal currentPrice = default;
-            decimal previousPrice = default;
-            decimal percentWins = 0;
-            decimal percentLoses = 0;
-            bool profitableTrading = true;
-
-            while (profitableTrading)
-            {
-                previousPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
-                Thread.Sleep(secondsToWait * 1000);
-                currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
-
-                var percentageDiff = CalculatePercentageDifference(previousPrice, currentPrice);
-
-                if (percentageDiff < 0.012m)
-                {
-                    continue;
-                }
-
-                side = currentPrice > previousPrice ? Side.BUY : Side.SELL;
-                var placeOrderResult = await _orderService.PlaceOrderAsync(Category.LINEAR, coin, side, OrderType.MARKET, quantity, currentPrice.ToString());
-
-                //while(tradeIsOpen)
-                //{
-                //  if(UnrealisedPL >= 25%)
-                //  {
-                //   position.Stoploss = entry;
-                //  }
-                //
-                //  if (UnrealisedPL >= 50 %)
-                //  {
-                //   position.Stoploss = 25%;
-                //  }     
-                //  if (UnrealisedPL >= 75%)
-                //  {
-                //   position.Stoploss = 50%;
-                //   position.TakeProfit = 100%;
-                //  }
-                //  if (UnrealisedPL >= 90%)
-                //  {
-                //   position.Stoploss = 80%;
-                //   position.TakeProfit = 110%;
-                //  }
-                //  if (UnrealisedPL >= 100%)
-                //  {
-                //   position.Stoploss = 90%;
-                //   position.TakeProfit = 120%;
-                //  }
-                // var previousPL = unrealisedPL
-                //  while(tradeIsOpen)
-                // {
-                // var currentPL = undrealisedPL
-                //   if(currentPL > s 10% ot previousPL)
-                //   {
-                //   position.Stoploss += 15%
-                //   position.TP += 10%
-                //   }
-                // }
-                //
-                // if(closedTrade.OrderPrice < MarketPrice) imame stoploss
-                //  {
-                //    percentLoses += 100%;
-                //  }
-                // else
-                // {
-                //   percentWins += percentWon;
-                // }
-                // if(percentLosses >= 150% && percentLosses > percentWins)
-                // profitableTrading = false;
-                //}
-            }
-        }
-
         /// <summary>
         /// 
         /// </summary>
@@ -121,12 +42,10 @@ namespace ByBItBots.Services.Implementations
         /// <param name="leverage">The leverage for the trade</param>
         /// <param name="presetBottom">Set this parameter only if you have already chosen a bottom by looking at the chart</param>
         /// <returns></returns>
-        public async Task ScalpVolatileLongsAsync(string coin, decimal capital, decimal consideredMoveStartPercentage, decimal wholeMovePercentage,
-            int secondsBetweenUpdates, int leverage, int decimals, int multiple, decimal presetBottom = -1)
+        public async Task ScalpLongsAsync(string coin, decimal capital, decimal consideredMoveStartPercentage, decimal wholeMovePercentage,
+            int secondsBetweenUpdates, int leverage, int decimals, int multiple, decimal presetBottom = -1, bool trackTrade = false)
         {
-            // TO DO
-            // sus 1000 dolara i 100 leverage vsushnost otvori poziciq s 10$ zashtoto 10 * 100 = 1000. Nie vsushnost iskame 1000 * 10 = 10000.
-            // Suotvetno izmeni capital *= leverage! vuzmojno da e bug ot testnet ne go probvai predi da potvurdish na mainnet che tova e istina
+            #region Set Up Trade
             coin += "USDT";
 
             decimal bottomPrice;
@@ -139,7 +58,7 @@ namespace ByBItBots.Services.Implementations
 
             consideredMoveStartPercentage /= 100;
             wholeMovePercentage /= 100;
-            decimal targetPriceForMoveStart = bottomPrice + (bottomPrice * consideredMoveStartPercentage); // bottom + ? = consideredMoveStartPercentage pokachvane
+            decimal targetPriceToConsiderMoveStarted = bottomPrice + (bottomPrice * consideredMoveStartPercentage); // bottom + ? = consideredMoveStartPercentage pokachvane
 
             bool tradePlaced = false;
             bool hasMoveStarted = false;
@@ -147,22 +66,31 @@ namespace ByBItBots.Services.Implementations
             Console.WriteLine("Pre loop information:");
             Console.WriteLine($"Current Price: {currentPrice}");
             Console.WriteLine($"First Bottom: {bottomPrice}");
-            Console.WriteLine($"Targeted price for move start: {targetPriceForMoveStart}");
+            Console.WriteLine($"Targeted price to consider move started: {targetPriceToConsiderMoveStarted}");
+            Console.WriteLine($"Take profit will be placed at: {bottomPrice + (bottomPrice * wholeMovePercentage)}");
             Console.WriteLine("-------------------------------------------------------------\n");
             Console.WriteLine("Pre trade information:");
+            var setLeverageResult = await _orderService.SetCoinLeverageAsync(coin, leverage);
+            Console.WriteLine($"Leverage message: {setLeverageResult}");
+            #endregion
 
             while (!tradePlaced)
             {
+                #region Find Move
                 currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
 
                 if (currentPrice < bottomPrice) // new bottom has been found
                 {
                     bottomPrice = currentPrice;
-                    targetPriceForMoveStart = bottomPrice + (bottomPrice * consideredMoveStartPercentage); // recalculate targeted price for move start
+                    targetPriceToConsiderMoveStarted = bottomPrice + (bottomPrice * consideredMoveStartPercentage); // recalculate targeted price for move start
                     Console.WriteLine($"New bottom set: {bottomPrice}");
-                    Console.WriteLine($"New Targeted price for move start: {targetPriceForMoveStart}");
+                    Console.WriteLine($"New Targeted price for move start: {targetPriceToConsiderMoveStarted}");
+                    Console.WriteLine($"Take profit will be placed at: {bottomPrice + (bottomPrice * wholeMovePercentage)}");
+
+                    decimal expectedQuantity = capital * leverage / currentPrice;
+                    Console.WriteLine($"Expected Formated Quantity: {FormatQuantity(expectedQuantity, decimals, multiple)}\n");
                 }
-                else if (currentPrice >= targetPriceForMoveStart)
+                else if (currentPrice >= targetPriceToConsiderMoveStarted)
                     hasMoveStarted = true;
 
                 if (!hasMoveStarted)
@@ -170,15 +98,14 @@ namespace ByBItBots.Services.Implementations
                     Thread.Sleep(1000 * secondsBetweenUpdates);
                     continue;
                 }
+                #endregion
 
+                #region Place Trade
                 // calculate TP and SL
                 decimal takeProfit = bottomPrice + (bottomPrice * wholeMovePercentage);
                 decimal stopLoss = bottomPrice; // if we get stopped often at retest change to bottom - 1%;
                 decimal quantityToBuy = capital * leverage / currentPrice;
                 string orderQuantity = FormatQuantity(quantityToBuy, decimals, multiple);
-
-                var setLeverageResult = await _orderService.SetCoinLeverageAsync(coin, leverage);
-                Console.WriteLine($"Leverage message: {setLeverageResult}");
 
                 var placeOrderResult = await _orderService.PlaceOrderAsync(Category.LINEAR, coin, Side.BUY, OrderType.MARKET, orderQuantity,
                     currentPrice.ToString(), takeProfit.ToString(), stopLoss.ToString());
@@ -191,8 +118,9 @@ namespace ByBItBots.Services.Implementations
                     Console.WriteLine("Move started information:");
                     Console.WriteLine("Trade placed successfuly");
                     var openOrder = await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR);
-                    var stopLossOrder = openOrder.Result.List[0];
-                    var takeProfitOrder = openOrder.Result.List[1];
+                    var tpslstats = openOrder.Result.List.OrderByDescending(o => o.TriggerPrice);
+                    var takeProfitOrder = openOrder.Result.List[0]; // old TP
+                    var stopLossOrder = openOrder.Result.List[1]; // old SL
 
                     Console.WriteLine($"Entry price: {takeProfitOrder.LastPriceOnCreated}");
                     Console.WriteLine($"Take profit price: {takeProfitOrder.TriggerPrice}");
@@ -207,12 +135,107 @@ namespace ByBItBots.Services.Implementations
                     Console.WriteLine($"Stop loss: {stopLoss}");
                     break;
                 }
+                #endregion
             }
 
-
+            if (trackTrade)
+            {
+                var intialTakeProfit = bottomPrice + (bottomPrice * wholeMovePercentage);
+                var profitRangePercentage = wholeMovePercentage - consideredMoveStartPercentage; // the price range for the trade from entry to TP in percentages - Whole move 5%, Move start 3%, Range = 2% (5 - 3)
+                await TrackTradeAsync(bottomPrice, profitRangePercentage, coin, targetPriceToConsiderMoveStarted, intialTakeProfit);
+            }
         }
 
-        #endregion
+        private async Task TrackTradeAsync(decimal bottomPrice, decimal profitRangePercentage, string coin, decimal entry, decimal initialTakeProfit)
+        {
+            Console.WriteLine("Trade tracking started");
+            #region Update Stoploss
+            var fiftyPercentOfProfitRange =  profitRangePercentage * 0.5m; // For 2% range, This value be 1%
+            var fiftyPercentOfProfitRangeAsPrice = entry + bottomPrice * fiftyPercentOfProfitRange;
+
+            var seventyFivePercentOfProfitRange = profitRangePercentage * 0.9m;
+            var seventyFivePercentOfProfitRangeAsPrice = entry + bottomPrice * seventyFivePercentOfProfitRange;
+
+            var nintyPercentOfProfitRange = profitRangePercentage * 0.9m;
+            var nintyPercentOfProfitRangeAsPrice = entry + bottomPrice * nintyPercentOfProfitRange;
+
+            var nintyFivePercentOfProfitRange = profitRangePercentage * 0.95m;
+            var nintyFivePercentOfProfitRangeAsPrice = entry + bottomPrice * nintyFivePercentOfProfitRange;
+
+            var startChasingProfits = false;
+            var openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result.List[0];
+
+            var profitRangeAsPrice = initialTakeProfit - entry;
+            var tpAfterIncrease = initialTakeProfit;
+            decimal slAfterIncrease = 0;
+
+            while (openOrder == null)
+            {
+                Console.WriteLine("Couldnt get open order, retry");
+                openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result.List[0];
+            }
+
+            while (!startChasingProfits)
+            {
+                var currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
+
+                // bottom price * Percent gives us percentage as price. Then we check if we rised with that much $
+
+                if (currentPrice >= nintyFivePercentOfProfitRangeAsPrice) // Set SL to 90% profits, increase tp to 110%
+                {
+                    //  change SL to 90% profits
+                    slAfterIncrease = nintyPercentOfProfitRangeAsPrice;
+                    // set TP to 110%;
+
+                    tpAfterIncrease = IncreaseTargetRangeWithTenPercent(initialTakeProfit, profitRangeAsPrice);
+                    var amendOrderResult = await _orderService.AmendTPSLAsync(coin, openOrder.OrderId, tpAfterIncrease.ToString(), slAfterIncrease.ToString());
+                    if (amendOrderResult.RetMsg != "OK")
+                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+
+                    startChasingProfits = true;
+                }
+                else if (currentPrice >= seventyFivePercentOfProfitRangeAsPrice) // set SL to 50% profits
+                {
+                    var amendOrderResult = await _orderService.AmendSLAsync(coin, openOrder.OrderId, fiftyPercentOfProfitRangeAsPrice.ToString());
+
+                    if (amendOrderResult.RetMsg != "OK")
+                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+                }
+                else if (currentPrice >= fiftyPercentOfProfitRangeAsPrice) // check if the price has reached 50% of the trade (the price has rised ? % from the bottom), set SL to Entry
+                {
+                    //change SL to Entry
+                    var amendOrderResult = await _orderService.AmendSLAsync(coin, openOrder.OrderId, entry.ToString());
+
+                    if (amendOrderResult.RetMsg != "OK")
+                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+                }
+            }
+            #endregion
+
+            #region Start Chasing Profits
+            // at this moment tp is 110%, SL is 90%, price is 95%+
+            openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result?.List[0];
+
+            while (openOrder != null)
+            {
+                var currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
+
+                if (currentPrice >= AlmostHitTpPrice(tpAfterIncrease, profitRangeAsPrice)) // tp almost hit, example 107%, TP becomes 120%, sl becomes 100%
+                {
+                    slAfterIncrease = IncreaseTargetRangeWithTenPercent(slAfterIncrease, profitRangeAsPrice);
+                    tpAfterIncrease = IncreaseTargetRangeWithTenPercent(tpAfterIncrease, profitRangeAsPrice);
+
+                    var amendOrderResult = await _orderService.AmendTPSLAsync(coin, openOrder.OrderId, tpAfterIncrease.ToString(), slAfterIncrease.ToString());
+                    if (amendOrderResult.RetMsg != "OK")
+                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+                }
+
+                openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result?.List[0];
+            }
+            #endregion
+
+            Console.WriteLine($"Track order complete, Original TP: {initialTakeProfit}, final TP: {tpAfterIncrease}, final SL: {slAfterIncrease}");
+        }
 
         public async Task<List<CoinShortInfo>> GetCoinsForFundingTradingAsync()
         {
@@ -304,6 +327,7 @@ namespace ByBItBots.Services.Implementations
                .ToList();
         }
 
+        #region Private Methods
         private decimal CalculatePercentageDifference(decimal num1, decimal num2)
         {
             decimal absoluteDifference = Math.Abs(num1 - num2);
@@ -343,5 +367,16 @@ namespace ByBItBots.Services.Implementations
         {
             return (int)Math.Round(number / 100.0) * 100;
         }
+
+        private decimal IncreaseTargetRangeWithTenPercent(decimal currentTargetPrice, decimal profitRangeAsPrice)
+        {
+            return currentTargetPrice + profitRangeAsPrice * 0.1m; //
+        }
+
+        private decimal AlmostHitTpPrice(decimal currentTpPrice, decimal profitRangeAsPrice)
+        {
+            return currentTpPrice - profitRangeAsPrice * 0.03m; // reduce TP with 3% to check if we are close to hitting the real TP
+        }
+        #endregion
     }
 }

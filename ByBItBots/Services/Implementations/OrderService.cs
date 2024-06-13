@@ -172,6 +172,45 @@ namespace ByBItBots.Services.Implementations
             return amendOrderResult;
         }
 
+        public async Task<ApiResponseResult<OrderResult>> AmendTPAsync(string symbol, string orderId, string takeProfit)
+        {
+            var amendOrder = await _tradeService.AmendOrder(Category.LINEAR, symbol, orderId: orderId, takeProfit: takeProfit);
+            var amendOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<OrderResult>>(amendOrder);
+
+            if (amendOrderResult == null)
+            {
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_AMEND_ORDER);
+            }
+
+            return amendOrderResult;
+        }
+
+        public async Task<ApiResponseResult<OrderResult>> AmendSLAsync(string symbol, string orderId, string stopLoss) // possible need to change to slTriggerBy instead of stopLoss
+        {
+            var amendOrder = await _tradeService.AmendOrder(Category.LINEAR, symbol, orderId: orderId, stopLoss: stopLoss);
+            var amendOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<OrderResult>>(amendOrder);
+
+            if (amendOrderResult == null)
+            {
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_AMEND_ORDER);
+            }
+
+            return amendOrderResult;
+        }
+
+        public async Task<ApiResponseResult<OrderResult>> AmendTPSLAsync(string symbol, string orderId, string takeProfit, string stopLoss)
+        {
+            var amendOrder = await _tradeService.AmendOrder(Category.LINEAR, symbol, orderId: orderId, takeProfit: takeProfit, stopLoss: stopLoss);
+            var amendOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<OrderResult>>(amendOrder);
+
+            if (amendOrderResult == null)
+            {
+                throw new InvalidOperationException(ErrorMessages.COULD_NOT_AMEND_ORDER);
+            }
+
+            return amendOrderResult;
+        }
+
         public async Task<string> SetCoinLeverageAsync(string coin, int leverage)
         {
             var leverageResponse = await _positionService.SetPositionLeverage(Category.LINEAR, coin, leverage.ToString(), leverage.ToString());

@@ -354,10 +354,14 @@ namespace ByBItBots.Helpers.Implementations
             int secontsBetweenUpdate = int.Parse(Console.ReadLine());
             Console.WriteLine("Enter trade leverage");
             int leverage = int.Parse(Console.ReadLine());
-            Console.WriteLine("Enter preset bottom");
+            Console.WriteLine("Enter preset bottom - -1 for none");
             decimal presetBottom = decimal.Parse(Console.ReadLine());
+            Console.WriteLine("Enter decimal points for price formating - 0/1/2/3..");
+            int decimals = int.Parse(Console.ReadLine());
+            Console.WriteLine("Enter required price multiplication: 0 for none, otherwise 10/100");
+            int multiple = int.Parse(Console.ReadLine());
 
-            await _derivativesTradingService.ScalpVolatileLongsAsync(coin, capital, moveStartPercent, wholeMovePercent, secontsBetweenUpdate, leverage, presetBottom);
+            await _derivativesTradingService.ScalpLongsAsync(coin, capital, moveStartPercent, wholeMovePercent, secontsBetweenUpdate, leverage, decimals, multiple, presetBottom);
         }
         #endregion Private methods
     }
