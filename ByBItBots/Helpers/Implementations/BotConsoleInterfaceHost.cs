@@ -361,7 +361,7 @@ namespace ByBItBots.Helpers.Implementations
             Console.WriteLine("Enter required price multiplication: 0 for none, otherwise 10/100");
             int multiple = int.Parse(Console.ReadLine());
 
-            await _derivativesTradingService.ScalpLongsAsync(coin, capital, moveStartPercent, wholeMovePercent, secontsBetweenUpdate, leverage, decimals, multiple, presetBottom);
+            await _derivativesTradingService.ScalpLongsAsync(coin, capital, moveStartPercent, wholeMovePercent, secontsBetweenUpdate, leverage, decimals, multiple, presetBottom, true);
         }
         #endregion Private methods
     }

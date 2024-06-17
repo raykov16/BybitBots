@@ -6,7 +6,6 @@ using ByBItBots.Constants;
 using ByBItBots.Results;
 using ByBItBots.Services.Interfaces;
 using Newtonsoft.Json;
-using System.Drawing;
 
 namespace ByBItBots.Services.Implementations
 {
@@ -102,8 +101,8 @@ namespace ByBItBots.Services.Implementations
 
                 #region Place Trade
                 // calculate TP and SL
-                decimal takeProfit = bottomPrice + (bottomPrice * wholeMovePercentage);
-                decimal stopLoss = bottomPrice; // if we get stopped often at retest change to bottom - 1%;
+                decimal takeProfit = Math.Round(bottomPrice + (bottomPrice * wholeMovePercentage), 7);
+                decimal stopLoss = Math.Round(bottomPrice, 7); // if we get stopped often at retest change to bottom - 1%;
                 decimal quantityToBuy = capital * leverage / currentPrice;
                 string orderQuantity = FormatQuantity(quantityToBuy, decimals, multiple);
 
@@ -140,9 +139,9 @@ namespace ByBItBots.Services.Implementations
 
             if (trackTrade)
             {
-                var intialTakeProfit = bottomPrice + (bottomPrice * wholeMovePercentage);
+                var intialTakeProfitAsPrice = bottomPrice + (bottomPrice * wholeMovePercentage);
                 var profitRangePercentage = wholeMovePercentage - consideredMoveStartPercentage; // the price range for the trade from entry to TP in percentages - Whole move 5%, Move start 3%, Range = 2% (5 - 3)
-                await TrackTradeAsync(bottomPrice, profitRangePercentage, coin, targetPriceToConsiderMoveStarted, intialTakeProfit);
+                await TrackTradeAsync(bottomPrice, profitRangePercentage, coin, targetPriceToConsiderMoveStarted, intialTakeProfitAsPrice);
             }
         }
 
@@ -150,22 +149,19 @@ namespace ByBItBots.Services.Implementations
         {
             Console.WriteLine("Trade tracking started");
             #region Update Stoploss
-            var fiftyPercentOfProfitRange =  profitRangePercentage * 0.5m; // For 2% range, This value be 1%
-            var fiftyPercentOfProfitRangeAsPrice = entry + bottomPrice * fiftyPercentOfProfitRange;
+            decimal profitRangeAsPrice = initialTakeProfit - entry;
 
-            var seventyFivePercentOfProfitRange = profitRangePercentage * 0.9m;
-            var seventyFivePercentOfProfitRangeAsPrice = entry + bottomPrice * seventyFivePercentOfProfitRange;
+            var fiftyPercentOfProfitRangeAsPrice = entry + profitRangeAsPrice * 0.5m;
 
-            var nintyPercentOfProfitRange = profitRangePercentage * 0.9m;
-            var nintyPercentOfProfitRangeAsPrice = entry + bottomPrice * nintyPercentOfProfitRange;
+            var seventyFivePercentOfProfitRangeAsPrice = entry + profitRangeAsPrice * 0.75m;
 
-            var nintyFivePercentOfProfitRange = profitRangePercentage * 0.95m;
-            var nintyFivePercentOfProfitRangeAsPrice = entry + bottomPrice * nintyFivePercentOfProfitRange;
+            var nintyPercentOfProfitRangeAsPrice = entry + profitRangeAsPrice * 0.9m;
+
+            var nintyFivePercentOfProfitRangeAsPrice = entry + profitRangeAsPrice * 0.95m;
 
             var startChasingProfits = false;
             var openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result.List[0];
 
-            var profitRangeAsPrice = initialTakeProfit - entry;
             var tpAfterIncrease = initialTakeProfit;
             decimal slAfterIncrease = 0;
 
@@ -192,42 +188,66 @@ namespace ByBItBots.Services.Implementations
                     if (amendOrderResult.RetMsg != "OK")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
+                    Console.WriteLine($"Stoploss moved to 90% profits: {slAfterIncrease}");
+                    Console.WriteLine($"TP moved to 110% profits: {tpAfterIncrease}");
+
                     startChasingProfits = true;
                 }
-                else if (currentPrice >= seventyFivePercentOfProfitRangeAsPrice) // set SL to 50% profits
+                else if (currentPrice >= seventyFivePercentOfProfitRangeAsPrice
+                     && slAfterIncrease < fiftyPercentOfProfitRangeAsPrice) // set SL to 50% profits
                 {
                     var amendOrderResult = await _orderService.AmendSLAsync(coin, openOrder.OrderId, fiftyPercentOfProfitRangeAsPrice.ToString());
 
                     if (amendOrderResult.RetMsg != "OK")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+
+                    Console.WriteLine($"Stoploss moved to 50% profits: {fiftyPercentOfProfitRangeAsPrice}");
                 }
-                else if (currentPrice >= fiftyPercentOfProfitRangeAsPrice) // check if the price has reached 50% of the trade (the price has rised ? % from the bottom), set SL to Entry
+                else if (currentPrice >= fiftyPercentOfProfitRangeAsPrice
+                    && slAfterIncrease < entry) // check if the price has reached 50% of the trade (the price has rised ? % from the bottom), set SL to Entry
                 {
                     //change SL to Entry
                     var amendOrderResult = await _orderService.AmendSLAsync(coin, openOrder.OrderId, entry.ToString());
 
                     if (amendOrderResult.RetMsg != "OK")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+
+                    Console.WriteLine($"Stoploss moved to Entry: {entry}");
                 }
             }
             #endregion
 
             #region Start Chasing Profits
+            Console.WriteLine("Chasing profits started");
             // at this moment tp is 110%, SL is 90%, price is 95%+
             openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result?.List[0];
+            var oldTp = initialTakeProfit;
 
             while (openOrder != null)
             {
                 var currentPrice = await _coinDataService.GetCurrentPriceAsync(coin, Category.LINEAR);
 
-                if (currentPrice >= AlmostHitTpPrice(tpAfterIncrease, profitRangeAsPrice)) // tp almost hit, example 107%, TP becomes 120%, sl becomes 100%
+                if (currentPrice > oldTp && slAfterIncrease != oldTp)
                 {
-                    slAfterIncrease = IncreaseTargetRangeWithTenPercent(slAfterIncrease, profitRangeAsPrice);
-                    tpAfterIncrease = IncreaseTargetRangeWithTenPercent(tpAfterIncrease, profitRangeAsPrice);
+                    slAfterIncrease = oldTp;
 
-                    var amendOrderResult = await _orderService.AmendTPSLAsync(coin, openOrder.OrderId, tpAfterIncrease.ToString(), slAfterIncrease.ToString());
+                    var amendOrderResult = await _orderService.AmendSLAsync(coin, openOrder.OrderId, slAfterIncrease.ToString());
                     if (amendOrderResult.RetMsg != "OK")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+
+                    Console.WriteLine($"Stoploss increased with to old tp: {slAfterIncrease}");
+                }
+
+                if (currentPrice >= AlmostHitTpPrice(tpAfterIncrease, profitRangeAsPrice)) // tp almost hit, example 107%, TP becomes 120%, sl becomes 100%
+                {
+                    oldTp = tpAfterIncrease;
+                    tpAfterIncrease = IncreaseTargetRangeWithTenPercent(tpAfterIncrease, profitRangeAsPrice);
+
+                    var amendOrderResult = await _orderService.AmendTPAsync(coin, openOrder.OrderId, tpAfterIncrease.ToString());
+                    if (amendOrderResult.RetMsg != "OK")
+                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+
+                    Console.WriteLine($"TakeProfit increased with 10%+ profits: {tpAfterIncrease}");
                 }
 
                 openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result?.List[0];
