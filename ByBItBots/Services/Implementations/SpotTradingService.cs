@@ -7,6 +7,7 @@ using ByBItBots.Services.Interfaces;
 using ByBitBots.DTOs;
 using ByBItBots.Constants;
 using static ByBItBots.Constants.SpotTradingMessages;
+using bybit.net.api;
 
 namespace ByBItBots.Services.Implementations
 {
@@ -276,7 +277,7 @@ namespace ByBItBots.Services.Implementations
                     quantity = decimal.Parse(previousOrderInfo.Quantity);
                 }
                 else
-                {
+                {          
                     quantity = Math.Round(capital / currentPrice, 2);
                 }
 

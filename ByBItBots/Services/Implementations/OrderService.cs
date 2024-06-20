@@ -7,6 +7,9 @@ using ByBItBots.Services.Interfaces;
 using ByBitBots.DTOs;
 using ByBItBots.Constants;
 using bybit.net.api.Models.Position;
+using bybit.net.api;
+using ByBItBots.Configs;
+using RestSharp;
 
 namespace ByBItBots.Services.Implementations
 {
@@ -188,7 +191,37 @@ namespace ByBItBots.Services.Implementations
 
         public async Task<ApiResponseResult<OrderResult>> AmendSLAsync(string symbol, string orderId, string stopLoss) // possible need to change to slTriggerBy instead of stopLoss
         {
-            var amendOrder = await _positionService.SetPositionTradingStop(category: Category.LINEAR, symbol: "AAVE", positionIndex: PositionIndex.OneWayMode ,stopLoss: stopLoss);
+            var CurrentTimeStamp = BybitParametersUtils.GetCurrentTimeStamp();
+            IBybitSignatureService bybitSignatureService = new BybitHmacSignatureGenerator(ConfigConstants.MainNetApiKey, ConfigConstants.MainNetApiSecret, CurrentTimeStamp, ConfigConstants.MainNetRecvWindow);
+           
+            Dictionary<string, object> query = new Dictionary<string, object>
+        {
+            { "category", "linear"},
+            { "symbol", "AAVEUSDT" },
+            { "positionIdx", "0" },
+            { "stopLoss", "75" }
+        };
+
+            var signature = bybitSignatureService.GeneratePostSignature(new Dictionary<string, object>());
+
+            var client = new RestClient("https://api.bybit.com/v5");
+            var request = new RestRequest("/position/trading-stop", Method.Post);
+            request.AddHeader("X-BAPI-API-KEY", ConfigConstants.MainNetApiKey);
+            request.AddHeader("X-BAPI-TIMESTAMP", CurrentTimeStamp);
+            request.AddHeader("X-BAPI-RECV-WINDOW", ConfigConstants.MainNetRecvWindow);
+            request.AddHeader("X-BAPI-SIGN", signature);
+            var body = @"{" + "\n" +
+            @"  ""category"": ""linear""," + "\n" +
+            @"  ""symbol"": ""AAVEUSDT""," + "\n" +
+            @"  ""stopLoss"": ""75""," + "\n" +
+            @"  ""positionIdx"": 0," + "\n" +
+            @"}";
+            request.AddParameter("text/plain", body, ParameterType.RequestBody);
+            RestResponse response = client.Execute(request);
+            Console.WriteLine(response.Content);
+
+
+            var amendOrder = await _positionService.SetPositionTradingStop(category: Category.LINEAR, symbol: "AAVE", positionIndex: PositionIndex.OneWayMode, stopLoss: stopLoss);
             var amendOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<OrderResult>>(amendOrder);
 
             if (amendOrderResult == null)
@@ -222,7 +255,7 @@ namespace ByBItBots.Services.Implementations
 
         public async Task GetPositionInfoAsync(string coin)
         {
-           var result = await _positionService.GetPositionInfo(Category.LINEAR, coin);
+            var result = await _positionService.GetPositionInfo(Category.LINEAR, coin);
         }
 
         private decimal CalculateTPSLPrice(decimal percentageLose, decimal leverage, decimal coinPrice, bool isTakeProfit)
