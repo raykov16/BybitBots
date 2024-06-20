@@ -342,6 +342,9 @@ namespace ByBItBots.Helpers.Implementations
 
         private async Task ExecuteScalpVolatileMovements()
         {
+            await _derivativesTradingService.TryOrdersAsync();
+
+            return;
             Console.WriteLine("Enter coin");
             string coin = Console.ReadLine();
             Console.WriteLine("Enter capital");

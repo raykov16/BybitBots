@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using ByBItBots.Services.Interfaces;
 using ByBitBots.DTOs;
 using ByBItBots.Constants;
+using bybit.net.api.Models.Position;
 
 namespace ByBItBots.Services.Implementations
 {
@@ -187,7 +188,7 @@ namespace ByBItBots.Services.Implementations
 
         public async Task<ApiResponseResult<OrderResult>> AmendSLAsync(string symbol, string orderId, string stopLoss) // possible need to change to slTriggerBy instead of stopLoss
         {
-            var amendOrder = await _tradeService.AmendOrder(Category.LINEAR, symbol, orderId: orderId, stopLoss: stopLoss);
+            var amendOrder = await _positionService.SetPositionTradingStop(category: Category.LINEAR, symbol: "AAVE", positionIndex: PositionIndex.OneWayMode ,stopLoss: stopLoss);
             var amendOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<OrderResult>>(amendOrder);
 
             if (amendOrderResult == null)
@@ -217,6 +218,11 @@ namespace ByBItBots.Services.Implementations
             var result = JsonConvert.DeserializeObject<ApiResponseResult<EmptyResult>>(leverageResponse);
 
             return result.RetMsg;
+        }
+
+        public async Task GetPositionInfoAsync(string coin)
+        {
+           var result = await _positionService.GetPositionInfo(Category.LINEAR, coin);
         }
 
         private decimal CalculateTPSLPrice(decimal percentageLose, decimal leverage, decimal coinPrice, bool isTakeProfit)

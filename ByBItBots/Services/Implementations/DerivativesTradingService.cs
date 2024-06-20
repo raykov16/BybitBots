@@ -347,6 +347,21 @@ namespace ByBItBots.Services.Implementations
                .ToList();
         }
 
+        public async Task TryOrdersAsync()
+        {
+            var coin = "AAVEUSDT";
+
+           // var placeOrderResult = await _orderService.PlaceOrderAsync(Category.LINEAR, coin, Side.BUY, OrderType.MARKET, "0.07", "87.6", "90", "85");
+            var openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result.List[0];
+            await _orderService.GetPositionInfoAsync(coin);
+            var amendSlResult = await _orderService.AmendSLAsync(coin, openOrder.OrderId, "86");
+
+            var amendTPResult = await _orderService.AmendTPAsync(coin, openOrder.OrderId, "91");
+
+            var amendTPSLResult = await _orderService.AmendTPSLAsync(coin, openOrder.OrderId, "92", "87");
+
+        }
+
         #region Private Methods
         private decimal CalculatePercentageDifference(decimal num1, decimal num2)
         {

@@ -26,5 +26,6 @@ namespace ByBItBots.Services.Interfaces
         Task<ApiResponseResult<OrderResult>> AmendSLAsync(string symbol, string orderId, string stopLoss);
         Task<ApiResponseResult<OrderResult>> AmendTPSLAsync(string symbol, string orderId, string takeProfit, string stopLoss);
         Task<string> SetCoinLeverageAsync(string coin, int leverage);
+        Task GetPositionInfoAsync(string coin);
     }
 }
