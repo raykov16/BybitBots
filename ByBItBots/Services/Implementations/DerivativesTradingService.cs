@@ -184,7 +184,7 @@ namespace ByBItBots.Services.Implementations
                     // set TP to 110%;
 
                     tpAfterIncrease = IncreaseTargetRangeWithTenPercent(initialTakeProfit, profitRangeAsPrice);
-                    var amendOrderResult = await _orderService.AmendTPSLAsync(coin, openOrder.OrderId, tpAfterIncrease.ToString(), slAfterIncrease.ToString());
+                    var amendOrderResult = await _orderService.AmendTPSLAsync(coin, tpAfterIncrease.ToString(), slAfterIncrease.ToString());
                     if (amendOrderResult.RetMsg != "OK")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
@@ -196,8 +196,7 @@ namespace ByBItBots.Services.Implementations
                 else if (currentPrice >= seventyFivePercentOfProfitRangeAsPrice
                      && slAfterIncrease < fiftyPercentOfProfitRangeAsPrice) // set SL to 50% profits
                 {
-                    var amendOrderResult = await _orderService.AmendSLAsync(coin, openOrder.OrderId, fiftyPercentOfProfitRangeAsPrice.ToString());
-
+                    var amendOrderResult = await _orderService.AmendSLAsync(coin, fiftyPercentOfProfitRangeAsPrice.ToString());
                     if (amendOrderResult.RetMsg != "OK")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
@@ -207,13 +206,16 @@ namespace ByBItBots.Services.Implementations
                     && slAfterIncrease < entry) // check if the price has reached 50% of the trade (the price has rised ? % from the bottom), set SL to Entry
                 {
                     //change SL to Entry
-                    var amendOrderResult = await _orderService.AmendSLAsync(coin, openOrder.OrderId, entry.ToString());
-
+                    var amendOrderResult = await _orderService.AmendSLAsync(coin, entry.ToString());
                     if (amendOrderResult.RetMsg != "OK")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
                     Console.WriteLine($"Stoploss moved to Entry: {entry}");
                 }
+
+                openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result.List[0];
+                if (openOrder == null)
+                    break;
             }
             #endregion
 
@@ -231,7 +233,7 @@ namespace ByBItBots.Services.Implementations
                 {
                     slAfterIncrease = oldTp;
 
-                    var amendOrderResult = await _orderService.AmendSLAsync(coin, openOrder.OrderId, slAfterIncrease.ToString());
+                    var amendOrderResult = await _orderService.AmendSLAsync(coin, slAfterIncrease.ToString());
                     if (amendOrderResult.RetMsg != "OK")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
@@ -243,7 +245,7 @@ namespace ByBItBots.Services.Implementations
                     oldTp = tpAfterIncrease;
                     tpAfterIncrease = IncreaseTargetRangeWithTenPercent(tpAfterIncrease, profitRangeAsPrice);
 
-                    var amendOrderResult = await _orderService.AmendTPAsync(coin, openOrder.OrderId, tpAfterIncrease.ToString());
+                    var amendOrderResult = await _orderService.AmendTPAsync(coin, tpAfterIncrease.ToString());
                     if (amendOrderResult.RetMsg != "OK")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
@@ -352,13 +354,11 @@ namespace ByBItBots.Services.Implementations
             var coin = "AAVEUSDT";
 
            // var placeOrderResult = await _orderService.PlaceOrderAsync(Category.LINEAR, coin, Side.BUY, OrderType.MARKET, "0.07", "87.6", "90", "85");
-            var openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result.List[0];
-            await _orderService.GetPositionInfoAsync(coin);
-            var amendSlResult = await _orderService.AmendSLAsync(coin, openOrder.OrderId, "86");
+            var amendSlResult = await _orderService.AmendSLAsync(coin, "80");
 
-            var amendTPResult = await _orderService.AmendTPAsync(coin, openOrder.OrderId, "91");
+            var amendTPResult = await _orderService.AmendTPAsync(coin, "91");
 
-            var amendTPSLResult = await _orderService.AmendTPSLAsync(coin, openOrder.OrderId, "92", "87");
+            var amendTPSLResult = await _orderService.AmendTPSLAsync(coin, "92", "83");
 
         }
 

@@ -45,6 +45,7 @@ var serviceProvider = new ServiceCollection()
         return new(config.ApiKey, config.ApiSecret, config.NetURL, config.RecvWindow);
     })
     .AddScoped<IBybitTimeService, BybitTimeService>()
+    .AddScoped<IConfig>(cfg => config)
     .AddScoped<ICoinDataService, CoinDataService>()
     .AddScoped<IPrinterService, ConsolePrinterService>()
     .AddScoped<IDerivativesTradingService, DerivativesTradingService>()

@@ -6,7 +6,6 @@ using Newtonsoft.Json;
 using ByBItBots.Services.Interfaces;
 using ByBitBots.DTOs;
 using ByBItBots.Constants;
-using bybit.net.api.Models.Position;
 using bybit.net.api;
 using ByBItBots.Configs;
 using RestSharp;
@@ -18,15 +17,18 @@ namespace ByBItBots.Services.Implementations
         private readonly BybitPositionService _positionService;
         private readonly BybitTradeService _tradeService;
         private readonly ICoinDataService _coinDataService;
+        private readonly IConfig _config;
 
         public OrderService(
             BybitPositionService positionService
             , BybitTradeService tradeService
-            , ICoinDataService coinDataService)
+            , ICoinDataService coinDataService
+            , IConfig config)
         {
             _positionService = positionService;
             _tradeService = tradeService;
             _coinDataService = coinDataService;
+            _config = config;
         }
 
         public async Task<(List<OrderRequest> OpenRequests, List<OrderRequest> CloseRequests)> CreateOrdersAsync(List<CoinShortInfo> coins, decimal capitalPerCoin)
@@ -176,73 +178,92 @@ namespace ByBItBots.Services.Implementations
             return amendOrderResult;
         }
 
-        public async Task<ApiResponseResult<OrderResult>> AmendTPAsync(string symbol, string orderId, string takeProfit)
-        {
-            var amendOrder = await _tradeService.AmendOrder(Category.LINEAR, symbol, orderId: orderId, takeProfit: takeProfit);
-            var amendOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<OrderResult>>(amendOrder);
-
-            if (amendOrderResult == null)
-            {
-                throw new InvalidOperationException(ErrorMessages.COULD_NOT_AMEND_ORDER);
-            }
-
-            return amendOrderResult;
-        }
-
-        public async Task<ApiResponseResult<OrderResult>> AmendSLAsync(string symbol, string orderId, string stopLoss) // possible need to change to slTriggerBy instead of stopLoss
+        public async Task<ApiResponseResult<EmptyResult>> AmendTPAsync(string symbol, string takeProfit)
         {
             var CurrentTimeStamp = BybitParametersUtils.GetCurrentTimeStamp();
-            IBybitSignatureService bybitSignatureService = new BybitHmacSignatureGenerator(ConfigConstants.MainNetApiKey, ConfigConstants.MainNetApiSecret, CurrentTimeStamp, ConfigConstants.MainNetRecvWindow);
-           
+            IBybitSignatureService bybitSignatureService = new BybitHmacSignatureGenerator(_config.ApiKey, _config.ApiSecret, CurrentTimeStamp, _config.RecvWindow);
             Dictionary<string, object> query = new Dictionary<string, object>
-        {
-            { "category", "linear"},
-            { "symbol", "AAVEUSDT" },
-            { "positionIdx", "0" },
-            { "stopLoss", "75" }
-        };
+                {
+                    { "category", Category.LINEAR.ToString()},
+                    { "symbol", symbol },
+                    { "positionIdx", "0" },
+                    { "takeProfit", takeProfit }
+                };
+            var text = JsonConvert.SerializeObject(query);
 
-            var signature = bybitSignatureService.GeneratePostSignature(new Dictionary<string, object>());
+            var signature = bybitSignatureService.GeneratePostSignature(query);
 
             var client = new RestClient("https://api.bybit.com/v5");
             var request = new RestRequest("/position/trading-stop", Method.Post);
-            request.AddHeader("X-BAPI-API-KEY", ConfigConstants.MainNetApiKey);
-            request.AddHeader("X-BAPI-TIMESTAMP", CurrentTimeStamp);
-            request.AddHeader("X-BAPI-RECV-WINDOW", ConfigConstants.MainNetRecvWindow);
+            request.AddHeader("X-BAPI-API-KEY", _config.ApiKey);
             request.AddHeader("X-BAPI-SIGN", signature);
-            var body = @"{" + "\n" +
-            @"  ""category"": ""linear""," + "\n" +
-            @"  ""symbol"": ""AAVEUSDT""," + "\n" +
-            @"  ""stopLoss"": ""75""," + "\n" +
-            @"  ""positionIdx"": 0," + "\n" +
-            @"}";
-            request.AddParameter("text/plain", body, ParameterType.RequestBody);
-            RestResponse response = client.Execute(request);
-            Console.WriteLine(response.Content);
+            request.AddHeader("X-BAPI-TIMESTAMP", CurrentTimeStamp);
+            request.AddHeader("X-BAPI-RECV-WINDOW", _config.RecvWindow);
+            request.AddStringBody(text, ContentType.Plain);
 
+            RestResponse response = await client.ExecuteAsync(request);
+            var result = JsonConvert.DeserializeObject<ApiResponseResult<EmptyResult>>(response.Content);
 
-            var amendOrder = await _positionService.SetPositionTradingStop(category: Category.LINEAR, symbol: "AAVE", positionIndex: PositionIndex.OneWayMode, stopLoss: stopLoss);
-            var amendOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<OrderResult>>(amendOrder);
-
-            if (amendOrderResult == null)
-            {
-                throw new InvalidOperationException(ErrorMessages.COULD_NOT_AMEND_ORDER);
-            }
-
-            return amendOrderResult;
+            return result;
         }
 
-        public async Task<ApiResponseResult<OrderResult>> AmendTPSLAsync(string symbol, string orderId, string takeProfit, string stopLoss)
+        public async Task<ApiResponseResult<EmptyResult>> AmendSLAsync(string symbol, string stopLoss) // possible need to change to slTriggerBy instead of stopLoss
         {
-            var amendOrder = await _tradeService.AmendOrder(Category.LINEAR, symbol, orderId: orderId, takeProfit: takeProfit, stopLoss: stopLoss);
-            var amendOrderResult = JsonConvert.DeserializeObject<ApiResponseResult<OrderResult>>(amendOrder);
+            var CurrentTimeStamp = BybitParametersUtils.GetCurrentTimeStamp();
+            IBybitSignatureService bybitSignatureService = new BybitHmacSignatureGenerator(_config.ApiKey, _config.ApiSecret, CurrentTimeStamp, _config.RecvWindow);
+            Dictionary<string, object> query = new Dictionary<string, object>
+                {
+                    { "category", Category.LINEAR.ToString()},
+                    { "symbol", symbol },
+                    { "positionIdx", "0" },
+                    { "stopLoss", stopLoss }
+                };
+            var text = JsonConvert.SerializeObject(query);
 
-            if (amendOrderResult == null)
-            {
-                throw new InvalidOperationException(ErrorMessages.COULD_NOT_AMEND_ORDER);
-            }
+            var signature = bybitSignatureService.GeneratePostSignature(query);
 
-            return amendOrderResult;
+            var client = new RestClient("https://api.bybit.com/v5");
+            var request = new RestRequest("/position/trading-stop", Method.Post);
+            request.AddHeader("X-BAPI-API-KEY", _config.ApiKey);
+            request.AddHeader("X-BAPI-SIGN", signature);
+            request.AddHeader("X-BAPI-TIMESTAMP", CurrentTimeStamp);
+            request.AddHeader("X-BAPI-RECV-WINDOW", _config.RecvWindow);
+            request.AddStringBody(text, ContentType.Plain);
+
+            RestResponse response = await client.ExecuteAsync(request);
+            var result = JsonConvert.DeserializeObject<ApiResponseResult<EmptyResult>>(response.Content);
+
+            return result;
+        }
+
+        public async Task<ApiResponseResult<EmptyResult>> AmendTPSLAsync(string symbol, string takeProfit, string stopLoss)
+        {
+            var CurrentTimeStamp = BybitParametersUtils.GetCurrentTimeStamp();
+            IBybitSignatureService bybitSignatureService = new BybitHmacSignatureGenerator(_config.ApiKey, _config.ApiSecret, CurrentTimeStamp, _config.RecvWindow);
+            Dictionary<string, object> query = new Dictionary<string, object>
+                {
+                    { "category", Category.LINEAR.ToString()},
+                    { "symbol", symbol },
+                    { "positionIdx", "0" },
+                    { "takeProfit", takeProfit },
+                    { "stopLoss", stopLoss }
+                };
+            var text = JsonConvert.SerializeObject(query);
+
+            var signature = bybitSignatureService.GeneratePostSignature(query);
+
+            var client = new RestClient("https://api.bybit.com/v5");
+            var request = new RestRequest("/position/trading-stop", Method.Post);
+            request.AddHeader("X-BAPI-API-KEY", _config.ApiKey);
+            request.AddHeader("X-BAPI-SIGN", signature);
+            request.AddHeader("X-BAPI-TIMESTAMP", CurrentTimeStamp);
+            request.AddHeader("X-BAPI-RECV-WINDOW", _config.RecvWindow);
+            request.AddStringBody(text, ContentType.Plain);
+
+            RestResponse response = await client.ExecuteAsync(request);
+            var result = JsonConvert.DeserializeObject<ApiResponseResult<EmptyResult>>(response.Content);
+
+            return result;
         }
 
         public async Task<string> SetCoinLeverageAsync(string coin, int leverage)
