@@ -213,7 +213,7 @@ namespace ByBItBots.Services.Implementations
                     Console.WriteLine($"Stoploss moved to Entry: {entry}");
                 }
 
-                openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result.List[0];
+                openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR))?.Result?.List.FirstOrDefault();
                 if (openOrder == null)
                     break;
             }
