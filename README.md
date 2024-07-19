@@ -1,6 +1,7 @@
 # Crypto Trading Bot
 
-This is my crypto trading bot designed using the Bybit API. It can be used to trade or get market information.
+This is my crypto trading bot designed using the Bybit API. It can be used simply for market information or for trading.
+The bot uses an algorithm made by me with close to 70% winrate on the trades.
 I use the bot on a daily basis and work on improving the current functionalities and developing new ones.
 Some functionalities might be broken on the TestNet accounts (the problem comes from Bybit's side)
 
