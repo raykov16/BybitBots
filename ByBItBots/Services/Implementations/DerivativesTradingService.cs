@@ -160,7 +160,7 @@ namespace ByBItBots.Services.Implementations
             var nintyFivePercentOfProfitRangeAsPrice = entry + profitRangeAsPrice * 0.95m;
 
             var startChasingProfits = false;
-            var openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result.List[0];
+            var openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR))?.Result?.List.FirstOrDefault();
 
             var tpAfterIncrease = initialTakeProfit;
             decimal slAfterIncrease = 0;
@@ -168,7 +168,7 @@ namespace ByBItBots.Services.Implementations
             while (openOrder == null)
             {
                 Console.WriteLine("Couldnt get open order, retry");
-                openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result.List[0];
+                openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR))?.Result?.List.FirstOrDefault();
             }
 
             while (!startChasingProfits)
@@ -185,7 +185,7 @@ namespace ByBItBots.Services.Implementations
 
                     tpAfterIncrease = IncreaseTargetRangeWithTenPercent(initialTakeProfit, profitRangeAsPrice);
                     var amendOrderResult = await _orderService.AmendTPSLAsync(coin, tpAfterIncrease.ToString(), slAfterIncrease.ToString());
-                    if (amendOrderResult.RetMsg != "OK")
+                    if (amendOrderResult.RetMsg != "OK" || amendOrderResult.RetMsg != "not modified")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
                     Console.WriteLine($"Stoploss moved to 90% profits: {slAfterIncrease}");
@@ -197,7 +197,7 @@ namespace ByBItBots.Services.Implementations
                      && slAfterIncrease < fiftyPercentOfProfitRangeAsPrice) // set SL to 50% profits
                 {
                     var amendOrderResult = await _orderService.AmendSLAsync(coin, fiftyPercentOfProfitRangeAsPrice.ToString());
-                    if (amendOrderResult.RetMsg != "OK")
+                    if (amendOrderResult.RetMsg != "OK" || amendOrderResult.RetMsg != "not modified")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
                     Console.WriteLine($"Stoploss moved to 50% profits: {fiftyPercentOfProfitRangeAsPrice}");
@@ -207,7 +207,7 @@ namespace ByBItBots.Services.Implementations
                 {
                     //change SL to Entry
                     var amendOrderResult = await _orderService.AmendSLAsync(coin, entry.ToString());
-                    if (amendOrderResult.RetMsg != "OK")
+                    if (amendOrderResult.RetMsg != "OK" || amendOrderResult.RetMsg != "not modified")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
                     Console.WriteLine($"Stoploss moved to Entry: {entry}");
@@ -222,7 +222,7 @@ namespace ByBItBots.Services.Implementations
             #region Start Chasing Profits
             Console.WriteLine("Chasing profits started");
             // at this moment tp is 110%, SL is 90%, price is 95%+
-            openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result?.List[0];
+            openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR))?.Result?.List.FirstOrDefault();
             var oldTp = initialTakeProfit;
 
             while (openOrder != null)
@@ -234,7 +234,7 @@ namespace ByBItBots.Services.Implementations
                     slAfterIncrease = oldTp;
 
                     var amendOrderResult = await _orderService.AmendSLAsync(coin, slAfterIncrease.ToString());
-                    if (amendOrderResult.RetMsg != "OK")
+                    if (amendOrderResult.RetMsg != "OK" || amendOrderResult.RetMsg != "not modified")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
                     Console.WriteLine($"Stoploss increased with to old tp: {slAfterIncrease}");
@@ -246,13 +246,16 @@ namespace ByBItBots.Services.Implementations
                     tpAfterIncrease = IncreaseTargetRangeWithTenPercent(tpAfterIncrease, profitRangeAsPrice);
 
                     var amendOrderResult = await _orderService.AmendTPAsync(coin, tpAfterIncrease.ToString());
-                    if (amendOrderResult.RetMsg != "OK")
+                    if (amendOrderResult.RetMsg != "OK" || amendOrderResult.RetMsg != "not modified")
                         Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
 
                     Console.WriteLine($"TakeProfit increased with 10%+ profits: {tpAfterIncrease}");
                 }
 
-                openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR)).Result?.List[0];
+                openOrder = (await _orderService.GetOpenOrdersAsync(coin, Category.LINEAR))?.Result?.List.FirstOrDefault();
+
+                if (openOrder == null)
+                    break;
             }
             #endregion
 
