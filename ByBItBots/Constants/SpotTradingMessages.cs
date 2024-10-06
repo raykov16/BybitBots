@@ -12,8 +12,8 @@
         public const string GETTING_PRICE = "Getting price";
         public const string ORDER_PRICE = "Order price: {0}";
         public const string MARKET_PRICE = "Market price: {0}";
-        public static string PRICE_DIFF_TOO_LARGE = "Price diff: {0}, sell order will not be placed!";
-        public static string PRICE_DIFF_TOO_SMALL = "Price diff: {0}, existing order price will not be changed!";
+        public static string PRICE_DIFF_TOO_LARGE = "Price diff: {0}%, sell order will not be placed!";
+        public static string PRICE_DIFF_TOO_SMALL = "Price diff: {0}%, existing order price will not be changed!";
 
         public const string PREVIOUS_SIDE = "Previous side: {0}";
         public const string CURRENT_SIDE = "Current side: {0}";
