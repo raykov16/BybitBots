@@ -187,7 +187,7 @@ namespace ByBItBots.Services.Implementations
                     var amendOrderResult = await _orderService.AmendTPSLAsync(coin, tpAfterIncrease.ToString(), slAfterIncrease.ToString());
                     if (amendOrderResult.RetMsg != "OK" && amendOrderResult.RetMsg != "not modified")
                     {
-                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg} Error code{amendOrderResult.RetCode}");
                         continue;
                     }
 
@@ -202,7 +202,7 @@ namespace ByBItBots.Services.Implementations
                     var amendOrderResult = await _orderService.AmendSLAsync(coin, fiftyPercentOfProfitRangeAsPrice.ToString());
                     if (amendOrderResult.RetMsg != "OK" && amendOrderResult.RetMsg != "not modified")
                     {
-                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg} Error code{amendOrderResult.RetCode}");
                         continue;
                     }
                     else
@@ -217,7 +217,7 @@ namespace ByBItBots.Services.Implementations
                     var amendOrderResult = await _orderService.AmendSLAsync(coin, entry.ToString());
                     if (amendOrderResult.RetMsg != "OK" && amendOrderResult.RetMsg != "not modified")
                     {
-                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg} Error code{amendOrderResult.RetCode}");
                         continue;
                     }
                     else
@@ -249,7 +249,7 @@ namespace ByBItBots.Services.Implementations
                     var amendOrderResult = await _orderService.AmendSLAsync(coin, slAfterIncrease.ToString());
                     if (amendOrderResult.RetMsg != "OK" && amendOrderResult.RetMsg != "not modified")
                     {
-                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg} Error code{amendOrderResult.RetCode}");
                         continue;
                     }
 
@@ -264,7 +264,7 @@ namespace ByBItBots.Services.Implementations
                     var amendOrderResult = await _orderService.AmendTPAsync(coin, tpAfterIncrease.ToString());
                     if (amendOrderResult.RetMsg != "OK" && amendOrderResult.RetMsg != "not modified")
                     { 
-                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg}");
+                        Console.WriteLine($"Amend orded failed, message: {amendOrderResult.RetMsg} Error code{amendOrderResult.RetCode}");
                         continue;
                     }
 
