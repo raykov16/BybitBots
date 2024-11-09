@@ -4,6 +4,7 @@
     {
         public const string USING_TEST_NET = "[USING TESTNET]";
         public const string USING_MAIN_NET = "[USING MAINNET]";
+        public const string USING_SMURF_NET = "[USING SMURF]";
 
         public const string PRESS_SPECIFIED_BUTTON = "Please press one of the specified buttons";
 

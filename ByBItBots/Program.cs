@@ -23,9 +23,14 @@ if (userChoice == BybitNets.TESTNET)
     config = new TestnetConfig();
     printer.PrintMessage(InterfaceCommunicationMessages.USING_TEST_NET);
 }
-else
+else if (userChoice == BybitNets.MAINNET)
 {
     config = new MainnetConfig();
+    printer.PrintMessage(InterfaceCommunicationMessages.USING_MAIN_NET);
+}
+else 
+{
+    config = new SmurfMainnetConfig();
     printer.PrintMessage(InterfaceCommunicationMessages.USING_MAIN_NET);
 }
 
