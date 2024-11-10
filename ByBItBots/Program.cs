@@ -31,7 +31,7 @@ else if (userChoice == BybitNets.MAINNET)
 else 
 {
     config = new SmurfMainnetConfig();
-    printer.PrintMessage(InterfaceCommunicationMessages.USING_MAIN_NET);
+    printer.PrintMessage(InterfaceCommunicationMessages.USING_SMURF_NET);
 }
 
 
@@ -77,6 +77,10 @@ BybitNets ChooseNet()
     else if (userChoice.Key == ConsoleKey.D2)
     {
         return BybitNets.MAINNET;
+    }
+    else if (userChoice.Key == ConsoleKey.D3)
+    {
+        return BybitNets.SMURFMAINNET;
     }
     else
     {

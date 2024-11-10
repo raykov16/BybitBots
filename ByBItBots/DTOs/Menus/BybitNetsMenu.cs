@@ -15,7 +15,8 @@ namespace ByBItBots.DTOs.Menus
             this.Options = new List<string>
             {
                 BybitNets.TESTNET.ToString().Replace("_", " "),
-                BybitNets.MAINNET.ToString().Replace("_", " ")
+                BybitNets.MAINNET.ToString().Replace("_", " "),
+                BybitNets.SMURFMAINNET.ToString().Replace("_", " "),
             };
         }
     }
